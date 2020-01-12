@@ -530,7 +530,7 @@ void LEVA::DoFirstTimestep()
 	//
 
 	if (StateSet) {
-		soundlib.InitSoundLib(GetHandle(), SOUND_DIRECTORY);
+		soundlib.InitSoundLib(oapiGetVesselInterface(GetHandle()), SOUND_DIRECTORY);
 		SetMissionPath();
 
 		//

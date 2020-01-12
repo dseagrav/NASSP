@@ -84,7 +84,7 @@ SM::SM (OBJHANDLE hObj, int fmodel) : VESSEL2(hObj, fmodel)
 	InitSM();
 	DefineAnimations();
 
-	soundlib.InitSoundLib(hObj, SOUND_DIRECTORY);
+	soundlib.InitSoundLib(oapiGetVesselInterface(hObj), SOUND_DIRECTORY);
 	soundlib.LoadSound(BreakS, CRASH_SOUND);
 }
 

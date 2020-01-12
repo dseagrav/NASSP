@@ -283,7 +283,7 @@ Saturn::Saturn(OBJHANDLE hObj, int fmodel) : ProjectApolloConnectorVessel (hObj,
 	//
 	// VESSELSOUND initialisation
 	// 
-	soundlib.InitSoundLib(hObj, SOUND_DIRECTORY);
+	soundlib.InitSoundLib(oapiGetVesselInterface(hObj), SOUND_DIRECTORY);
 
 	cws.MonitorVessel(this);
 	dockingprobe.RegisterVessel(this);

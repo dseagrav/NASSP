@@ -94,7 +94,7 @@ VAB::VAB(OBJHANDLE hObj, int fmodel) : VESSEL2 (hObj, fmodel) {
 			mgroupCrane2[i][j] = 0;
 	}
 
-	soundlib.InitSoundLib(hObj, SOUND_DIRECTORY);
+	soundlib.InitSoundLib(oapiGetVesselInterface(hObj), SOUND_DIRECTORY);
 }
 
 VAB::~VAB() {

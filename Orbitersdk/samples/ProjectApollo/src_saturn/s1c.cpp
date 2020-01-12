@@ -50,7 +50,7 @@ S1C::S1C (OBJHANDLE hObj, int fmodel) : VESSEL2(hObj, fmodel)
     /// causing problems during creation of the S1C. Since the sound inside the S1C isn't very important
 	/// it's disabled for the moment. 
 	
-	soundlib.InitSoundLib(hObj, SOUND_DIRECTORY);
+	soundlib.InitSoundLib(oapiGetVesselInterface(hObj), SOUND_DIRECTORY);
 	soundlib.SoundOptionOnOff(PLAYCABINAIRCONDITIONING, FALSE);
 	soundlib.SoundOptionOnOff(PLAYCABINRANDOMAMBIANCE, FALSE);
 	soundlib.SoundOptionOnOff(PLAYRADIOATC, FALSE);

@@ -80,7 +80,7 @@ MSS::MSS(OBJHANDLE hObj, int fmodel) : VESSEL2 (hObj, fmodel) {
 	touchdownPointHeight = -67.25;		// park height
 	hLV = 0;
 
-	soundlib.InitSoundLib(hObj, SOUND_DIRECTORY);
+	soundlib.InitSoundLib(oapiGetVesselInterface(hObj), SOUND_DIRECTORY);
 }
 
 MSS::~MSS() {

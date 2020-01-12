@@ -77,7 +77,7 @@ Floodlight::Floodlight(OBJHANDLE hObj, int fmodel) : VESSEL2 (hObj, fmodel) {
 	currentExhaust = 0;
 	configMode = 0;
 
-	soundlib.InitSoundLib(hObj, SOUND_DIRECTORY);
+	soundlib.InitSoundLib(oapiGetVesselInterface(hObj), SOUND_DIRECTORY);
 }
 
 Floodlight::~Floodlight() {
