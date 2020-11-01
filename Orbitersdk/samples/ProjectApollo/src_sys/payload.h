@@ -25,6 +25,8 @@
 #if !defined(_PA_PAYLOAD_H)
 #define _PA_PAYLOAD_H
 
+#include "connector.h"
+
 struct PayloadSettings {
 
 	double AscentFuelKg;

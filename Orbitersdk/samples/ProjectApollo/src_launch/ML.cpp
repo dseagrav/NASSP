@@ -502,6 +502,10 @@ void ML::clbkPreStep(double simt, double simdt, double mjd) {
 		{
 			IuESE->SetGuidanceReferenceRelease(true);
 		}
+		else
+		{
+			IuUmb->LVDCPrepareToLaunch();
+		}
 
 		// T-16.2s or later?
 		if (sat->GetMissionTime() > -16.2)

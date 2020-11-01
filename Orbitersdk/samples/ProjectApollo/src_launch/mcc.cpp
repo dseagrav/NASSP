@@ -32,7 +32,6 @@
 #include "saturn.h"
 #include "saturnv.h"
 #include "LEM.h"
-#include "LEMSaturn.h"
 #include "sivb.h"
 #include "../src_rtccmfd/OrbMech.h"
 #include "mcc.h"
@@ -156,7 +155,9 @@ void MCC::clbkPostCreation()
 			v = oapiGetVesselInterface(hVessel);
 
 			if (!stricmp(v->GetClassName(), "ProjectApollo\\sat5stg3") ||
-				!stricmp(v->GetClassName(), "ProjectApollo/sat5stg3")) {
+				!stricmp(v->GetClassName(), "ProjectApollo/sat5stg3") ||
+				!stricmp(v->GetClassName(), "ProjectApollo\\nsat1stg2") ||
+				!stricmp(v->GetClassName(), "ProjectApollo/nsat1stg2")) {
 				sivb = (SIVB *)v;
 			}
 		}
@@ -171,9 +172,7 @@ void MCC::clbkPostCreation()
 			v = oapiGetVesselInterface(hVessel);
 
 			if (!stricmp(v->GetClassName(), "ProjectApollo\\LEM") ||
-				!stricmp(v->GetClassName(), "ProjectApollo/LEM") ||
-				!stricmp(v->GetClassName(), "ProjectApollo\\LEMSaturn") ||
-				!stricmp(v->GetClassName(), "ProjectApollo/LEMSaturn")) {
+				!stricmp(v->GetClassName(), "ProjectApollo/LEM")) {
 				lm = (LEM *)v;
 				rtcc->calcParams.tgt = lm;
 			}

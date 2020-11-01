@@ -318,32 +318,6 @@ void Saturn1b::clbkPostStep (double simt, double simdt, double mjd) {
 	Saturn::clbkPostStep(simt, simdt, mjd);
 }
 
-/// 
-/// \brief LVDC "Switch Selector" staging support utility function
-/// 
-void Saturn1b::SwitchSelector(int item){
-	int i=0;
-
-	switch(item){
-	case 12:
-		SetThrusterGroupLevel(thg_1st, 0);				// Ensure off
-		for (i = 0; i < 5; i++) {						// Reconnect fuel to S1C engines
-			SetThrusterResource(th_1st[i], ph_1st);
-		}
-		CreateStageOne();								// Create hidden stage one, for later use in staging
-		break;
-	case 17:
-		// Move hidden S1B
-		if (hstg1) {
-			VESSELSTATUS vs;
-			GetStatus(vs);
-			S1B *stage1 = (S1B *)oapiGetVesselInterface(hstg1);
-			stage1->DefSetState(&vs);
-		}
-		break;
-	}
-}
-
 void Saturn1b::SISwitchSelector(int channel)
 {
 	if (stage > LAUNCH_STAGE_ONE) return;
@@ -506,7 +480,7 @@ void Saturn1b::CreateStageSpecificSystems()
 {
 	if (stage <= LAUNCH_STAGE_ONE)
 	{
-		sib = new SIBSystems(this, th_1st, ph_1st, SIBSIVBSepPyros, LaunchS, SShutS, contrailLevel);
+		sib = new SIBSystems(this, th_1st, ph_1st, SIBSIVBSepPyros, LaunchS, SShutS);
 	}
 	if (stage < CSM_LEM_STAGE)
 	{

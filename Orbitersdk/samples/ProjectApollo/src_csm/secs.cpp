@@ -1451,9 +1451,6 @@ SECS::SECS()
 {
 
 	State = 0;
-	NextMissionEventTime = MINUS_INFINITY;
-	LastMissionEventTime = MINUS_INFINITY;
-
 	Sat = 0;
 
 	SMJCA = NULL;
@@ -1733,8 +1730,6 @@ void SECS::SaveState(FILEHANDLE scn)
 	oapiWriteLine(scn, SECS_START_STRING);
 
 	oapiWriteScenario_int(scn, "STATE", State);
-	papiWriteScenario_double(scn, "NEXTMISSIONEVENTTIME", NextMissionEventTime);
-	papiWriteScenario_double(scn, "LASTMISSIONEVENTTIME", LastMissionEventTime);
 	rcsc.SaveState(scn, "RCSC_BEGIN", "RCSC_END");
 	MESCA.SaveState(scn, "MESCA_BEGIN", "MESC_END");
 	MESCB.SaveState(scn, "MESCB_BEGIN", "MESC_END");
@@ -1757,8 +1752,6 @@ void SECS::LoadState(FILEHANDLE scn)
 			break;
 
 		papiReadScenario_int(line, "STATE", State);
-		papiReadScenario_double(line, "NEXTMISSIONEVENTTIME", NextMissionEventTime);
-		papiReadScenario_double(line, "LASTMISSIONEVENTTIME", LastMissionEventTime);
 		
 		if (!strnicmp(line, "RCSC_BEGIN", sizeof("RCSC_BEGIN"))) {
 			rcsc.LoadState(scn, "RCSC_END");
@@ -2089,8 +2082,6 @@ ELS::ELS() :
 	BaroSwitch24k(18823.7, 39319.4)
 {
 	State = 0;
-	NextMissionEventTime = MINUS_INFINITY;
-	LastMissionEventTime = MINUS_INFINITY;
 
 	FloatBag1Size = 0;
 	FloatBag2Size = 0;
@@ -2310,8 +2301,6 @@ void ELS::SaveState(FILEHANDLE scn)
 	oapiWriteScenario_int(scn, "STATE", State);
 	oapiWriteScenario_int(scn, "BAROSWITCH10K", BaroSwitch10k.GetStatus());
 	oapiWriteScenario_int(scn, "BAROSWITCH24K", BaroSwitch24k.GetStatus());
-	oapiWriteScenario_float(scn, "NEXTMISSIONEVENTTIME", NextMissionEventTime);
-	oapiWriteScenario_float(scn, "LASTMISSIONEVENTTIME", LastMissionEventTime);
 	oapiWriteScenario_float(scn, "FLOATBAG1SIZE", FloatBag1Size);
 	oapiWriteScenario_float(scn, "FLOATBAG2SIZE", FloatBag2Size);
 	oapiWriteScenario_float(scn, "FLOATBAG3SIZE", FloatBag3Size);
@@ -2345,14 +2334,6 @@ void ELS::LoadState(FILEHANDLE scn)
 		else if (!strnicmp(line, "BAROSWITCH24K", 13)) {
 			sscanf(line + 13, "%d", &it);
 			BaroSwitch24k.SetStatus(it);
-		}
-		else if (!strnicmp (line, "NEXTMISSIONEVENTTIME", 20)) {
-			sscanf(line + 20, "%f", &flt);
-			NextMissionEventTime = flt;
-		}
-		else if (!strnicmp (line, "LASTMISSIONEVENTTIME", 20)) {
-			sscanf(line + 20, "%f", &flt);
-			LastMissionEventTime = flt;
 		}
 		else if (!strnicmp (line, "FLOATBAG1SIZE", 13)) {
 			sscanf (line+13, "%lf", &FloatBag1Size);

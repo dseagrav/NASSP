@@ -66,7 +66,6 @@ public:
 	/// 
 	/// \brief LVDC "Switch Selector" staging support utility function
 	/// 
-	void SwitchSelector(int item);
 	void SISwitchSelector(int channel);
 
 	void SIEDSCutoff(bool cut);

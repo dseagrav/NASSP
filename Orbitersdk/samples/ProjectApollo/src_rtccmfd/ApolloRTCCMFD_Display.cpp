@@ -4128,6 +4128,7 @@ bool ApolloRTCCMFD::Update(oapi::Sketchpad *skp)
 			skp->Text(1 * W / 8, 8 * H / 14, "LGC Descent Update", 18);
 		}
 		skp->Text(1 * W / 8, 10 * H / 14, "REFSMMAT Update", 15);
+		skp->Text(1 * W / 8, 12 * H / 14, "SLV Navigation Update", 21);
 	}
 	else if (screen == 48)
 	{
@@ -8294,6 +8295,71 @@ bool ApolloRTCCMFD::Update(oapi::Sketchpad *skp)
 		skp->Text(42 * W / 43, 23 * H / 26, Buffer, strlen(Buffer));
 		sprintf_s(Buffer, "%+.7lf", GC->rtcc->GOSTDisplayBuffer.data.REFSMMAT.m33);
 		skp->Text(42 * W / 43, 24 * H / 26, Buffer, strlen(Buffer));
+	}
+	else if (screen == 96)
+	{
+		skp->SetTextAlign(oapi::Sketchpad::CENTER);
+		skp->Text(1 * W / 2, 3 * H / 32, "SLV NAVIGATION UPDATE (MSK 235)", 31);
+		skp->SetTextAlign(oapi::Sketchpad::LEFT);
+
+		skp->Text(5 * W / 32, 5 * H / 32, "LOAD NO", 7);
+		skp->Text(12 * W / 32, 5 * H / 32, "GETSV", 5);
+
+		skp->Text(4 * W / 32, 7 * H / 32, "FCT", 3);
+		skp->Text(14 * W / 32, 7 * H / 32, "ENGLISH", 31);
+		skp->Text(24 * W / 32, 7 * H / 32, "METRIC", 31);
+
+		skp->Text(4 * W / 32, 10 * H / 32, "Z DOT", 5);
+		skp->Text(4 * W / 32, 12 * H / 32, "X DOT", 5);
+		skp->Text(4 * W / 32, 14 * H / 32, "Y DOT", 5);
+		skp->Text(4 * W / 32, 16 * H / 32, "Z POS", 5);
+		skp->Text(4 * W / 32, 18 * H / 32, "X POS", 5);
+		skp->Text(4 * W / 32, 20 * H / 32, "Y POS", 5);
+		skp->Text(4 * W / 32, 22 * H / 32, "TIME", 4);
+
+		if (G->svtarget != NULL)
+		{
+			sprintf(Buffer, G->svtarget->GetName());
+			skp->Text(6 * W / 8, 2 * H / 14, Buffer, strlen(Buffer));
+		}
+		else
+		{
+			skp->Text(6 * W / 8, 2 * H / 14, "No Target!", 10);
+		}
+
+		GET_Display2(Buffer, G->SVDesiredGET);
+		skp->Text(16 * W / 32, 5 * H / 32, Buffer, strlen(Buffer));
+
+		sprintf_s(Buffer, "%+.1lf", GC->rtcc->CZNAVSLV.DotS.z / 0.3048);
+		skp->Text(14 * W / 32, 10 * H / 32, Buffer, strlen(Buffer));
+		sprintf_s(Buffer, "%+.1lf", GC->rtcc->CZNAVSLV.DotS.z);
+		skp->Text(24 * W / 32, 10 * H / 32, Buffer, strlen(Buffer));
+		sprintf_s(Buffer, "%+.1lf", GC->rtcc->CZNAVSLV.DotS.x / 0.3048);
+		skp->Text(14 * W / 32, 12 * H / 32, Buffer, strlen(Buffer));
+		sprintf_s(Buffer, "%+.1lf", GC->rtcc->CZNAVSLV.DotS.x);
+		skp->Text(24 * W / 32, 12 * H / 32, Buffer, strlen(Buffer));
+		sprintf_s(Buffer, "%+.1lf", GC->rtcc->CZNAVSLV.DotS.y / 0.3048);
+		skp->Text(14 * W / 32, 14 * H / 32, Buffer, strlen(Buffer));
+		sprintf_s(Buffer, "%+.1lf", GC->rtcc->CZNAVSLV.DotS.y);
+		skp->Text(24 * W / 32, 14 * H / 32, Buffer, strlen(Buffer));
+		sprintf_s(Buffer, "%+.1lf", GC->rtcc->CZNAVSLV.PosS.z / 1852.0);
+		skp->Text(14 * W / 32, 16 * H / 32, Buffer, strlen(Buffer));
+		sprintf_s(Buffer, "%+.1lf", GC->rtcc->CZNAVSLV.PosS.z / 1000.0);
+		skp->Text(24 * W / 32, 16 * H / 32, Buffer, strlen(Buffer));
+		sprintf_s(Buffer, "%+.1lf", GC->rtcc->CZNAVSLV.PosS.x / 1852.0);
+		skp->Text(14 * W / 32, 18 * H / 32, Buffer, strlen(Buffer));
+		sprintf_s(Buffer, "%+.1lf", GC->rtcc->CZNAVSLV.PosS.x / 1000.0);
+		skp->Text(24 * W / 32, 18 * H / 32, Buffer, strlen(Buffer));
+		sprintf_s(Buffer, "%+.1lf", GC->rtcc->CZNAVSLV.PosS.y / 1852.0);
+		skp->Text(14 * W / 32, 20 * H / 32, Buffer, strlen(Buffer));
+		sprintf_s(Buffer, "%+.1lf", GC->rtcc->CZNAVSLV.PosS.y / 1000.0);
+		skp->Text(24 * W / 32, 20 * H / 32, Buffer, strlen(Buffer));
+
+		GET_Display2(Buffer, GC->rtcc->CZNAVSLV.NUPTIM);
+		skp->Text(14 * W / 32, 22 * H / 32, Buffer, strlen(Buffer));
+		sprintf_s(Buffer, "%+.4lf", GC->rtcc->CZNAVSLV.NUPTIM / 3600.0);
+		skp->Text(24 * W / 32, 22 * H / 32, Buffer, strlen(Buffer));
+
 	}
 	return true;
 }

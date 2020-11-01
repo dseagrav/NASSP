@@ -93,7 +93,6 @@ enum IULVMessageType
 	IULV_SET_SI_THRUSTER_DIR,				///< Set thruster direction.
 	IULV_SET_SII_THRUSTER_DIR,
 	IULV_SET_SIVB_THRUSTER_DIR,
-	IULV_SWITCH_SELECTOR,
 	IULV_SI_SWITCH_SELECTOR,
 	IULV_SII_SWITCH_SELECTOR,
 	IULV_SIVB_SWITCH_SELECTOR,
@@ -113,7 +112,6 @@ enum IULVMessageType
 	IULV_GET_GLOBAL_VEL,					///< Get global vel
 	IULV_GET_ANGULARVEL,					///< Get angular velocity
 	IULV_GET_MISSIONTIME,
-	IULV_GET_APOLLONO,
 	IULV_GET_SI_THRUST_OK,
 	IULV_GET_SII_THRUST_OK,
 	IULV_GET_SIVB_THRUST_OK,
@@ -127,6 +125,7 @@ enum IULVMessageType
 	IULV_GET_SII_FUEL_TANK_PRESSURE,
 	IULV_GET_SIVB_FUEL_TANK_PRESSURE,
 	IULV_GET_SIVB_LOX_TANK_PRESSURE,
+	IULV_GET_VEHICLENO
 };
 
 ///
@@ -196,7 +195,6 @@ public:
 	void SetSIIThrusterDir(int n, double yaw, double pitch);
 	void SetSIVBThrusterDir(double yaw, double pitch);
 
-	void SwitchSelector(int item);
 	void SISwitchSelector(int channel);
 	void SIISwitchSelector(int channel);
 	void SIVBSwitchSelector(int channel);
@@ -213,8 +211,8 @@ public:
 	void GetRotationMatrix(MATRIX3 &rot);
 	void GetAngularVel(VECTOR3 &avel);
 	double GetMissionTime();
-	int GetApolloNo();
-	void GetSIThrustOK(bool *ok);
+	int GetVehicleNo();
+	void GetSIThrustOK(bool *ok, int n);
 	bool GetSIPropellantDepletionEngineCutoff();
 	bool GetSIInboardEngineOut();
 	bool GetSIOutboardEngineOut();
@@ -262,6 +260,7 @@ public:
 	/// \param simdt The time in seconds since the last timestep call.
 	///
 	virtual void Timestep(double misst, double simt, double simdt, double mjd);
+	void LVDCTimestep(double simt, double simdt);
 	virtual void SwitchSelector(int item) = 0;
 	void PostStep(double simt, double simdt, double mjd);
 
@@ -280,6 +279,7 @@ public:
 	bool GetSIVBEngineOut();
 	bool IsUmbilicalConnected();
 	bool GetSCControlPoweredFlight() { return SCControlPoweredFlight; }
+	VECTOR3 GetTheodoliteAlignment(double azimuth);
 
 	virtual void ConnectUmbilical(IUUmbilical *umb);
 	virtual void DisconnectUmbilical();
@@ -338,6 +338,7 @@ protected:
 	/// \brief Mission Elapsed Time, passed into the IU from the spacecraft.
 	///
 	double MissionTime;
+	double LastCycled;
 
 	///
 	/// \brief Connector to CSM.

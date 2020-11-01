@@ -42,8 +42,6 @@
 
 #include "LEM.h"
  
-#define VIEWANGLE 30
-
 #define LOADBMP(id) (LoadBitmap (g_Param.hDLL, MAKEINTRESOURCE (id)))
 
 static GDIParams g_Param;
@@ -1521,6 +1519,7 @@ void LEM::InitPanelVC() {
 	srf[SRF_INDICATORVC] = oapiLoadTexture("ProjectApollo/VC/Indicator.dds");
 	srf[SRF_INDICATORREDVC] = oapiLoadTexture("ProjectApollo/VC/IndicatorRed.dds");
 	srf[SRF_LEM_MASTERALARMVC] = oapiLoadTexture("ProjectApollo/VC/lem_master_alarm.dds");
+	srf[SRF_DEDA_LIGHTSVC] = oapiLoadTexture("ProjectApollo/VC/ags_lights.dds");
 
 	oapiSetSurfaceColourKey(srf[SRF_VC_DIGITALDISP], g_Param.col[4]);
 	oapiSetSurfaceColourKey(srf[SRF_VC_DIGITALDISP2], g_Param.col[4]);

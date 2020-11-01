@@ -133,7 +133,7 @@ void LEM::SetLmVesselDockStage()
 	SetVisibilityLimit(1e-3, 4.6401e-4);
 	SetPMI(_V(2.5428, 2.2871, 2.7566));
 	SetCrossSections (_V(24.53,21.92,24.40));
-	SetCW (0.1, 0.3, 1.4, 1.4);
+	CreateAirfoils();
 	SetRotDrag (_V(0.7,0.7,0.7));
 	SetPitchMomentScale (0);
 	SetYawMomentScale (0);
@@ -177,23 +177,13 @@ void LEM::SetLmVesselDockStage()
 
 	AddDust();
 
-	SetCameraOffset(_V(-0.61, 1.625, 1.39) - currentCoG); // Has to be the same as LPD view
+	SetCameraOffset(_V(-0.58, 1.60, 1.40) - currentCoG); // Has to be the same as LPD view
 	SetEngineLevel(ENGINE_HOVER,0);
 	AddRCS_LMH(-5.4516);
 	status = 0;
 	stage = 0;
 
 	InitNavRadios (4);
-
-	// Descent stage attached.
-	if (InvertStageBit)
-	{
-		agc.SetInputChannelBit(030, DescendStageAttached, false);
-	}
-	else
-	{
-		agc.SetInputChannelBit(030, DescendStageAttached, true);
-	}
 
 	// Exterior lights
 	SetTrackLight();
@@ -210,7 +200,7 @@ void LEM::SetLmVesselHoverStage()
 	SetVisibilityLimit(1e-3, 5.4135e-4);
 	SetPMI(_V(2.5428, 2.2871, 2.7566));
 	SetCrossSections (_V(24.53,21.92,24.40));
-	SetCW (0.1, 0.3, 1.4, 1.4);
+	CreateAirfoils();
 	SetRotDrag (_V(0.7,0.7,0.7));
 	SetPitchMomentScale (0);
 	SetYawMomentScale (0);
@@ -252,23 +242,13 @@ void LEM::SetLmVesselHoverStage()
 
 	AddDust();
 
-	SetCameraOffset(_V(-0.61, 1.625, 1.39) - currentCoG); // Has to be the same as LPD view
+	SetCameraOffset(_V(-0.58, 1.60, 1.40) - currentCoG); // Has to be the same as LPD view
 	status = 1;
 	stage = 1;
 	SetEngineLevel(ENGINE_HOVER,0);
 	AddRCS_LMH(-5.4516);
 
 	InitNavRadios (4);
-
-	// Descent stage attached.
-	if (InvertStageBit)
-	{
-		agc.SetInputChannelBit(030, DescendStageAttached, false);
-	}
-	else
-	{
-		agc.SetInputChannelBit(030, DescendStageAttached, true);
-	}
 
 	// Exterior lights
 	SetTrackLight();
@@ -288,7 +268,7 @@ void LEM::SetLmAscentHoverStage()
 	SetEmptyMass (AscentEmptyMassKg);
 	SetPMI(_V(2.8, 2.29, 2.37));
 	SetCrossSections (_V(21,23,17));
-	SetCW (0.1, 0.3, 1.4, 1.4);
+	CreateAirfoils();
 	SetRotDrag (_V(0.7,0.7,0.7));
 	SetPitchMomentScale (0);
 	SetYawMomentScale (0);
@@ -335,7 +315,7 @@ void LEM::SetLmAscentHoverStage()
 
 	AddExhaust(es_hover);
 	
-	SetCameraOffset(_V(-0.61, -0.125, 1.39)); // Has to be the same as LPD view
+	SetCameraOffset(_V(-0.58, -0.15, 1.40)); // Has to be the same as LPD view
 	status = 2;
 	stage = 2;
 	SetEngineLevel(ENGINE_HOVER,0);
@@ -348,16 +328,6 @@ void LEM::SetLmAscentHoverStage()
 	
 	SetLmDockingPort(0.85);
 	InitNavRadios (4);
-
-	// Descent stage attached.
-	if (InvertStageBit)
-	{
-		agc.SetInputChannelBit(030, DescendStageAttached, true);
-	}
-	else
-	{
-		agc.SetInputChannelBit(030, DescendStageAttached, false);
-	}
 
 	// Exterior lights
 	SetTrackLight();
@@ -764,6 +734,18 @@ void LEM::SetMeshes() {
 
 	// Descent Stage Mesh
 	dscidx = AddMesh(hLMDescent, &mesh_dsc);
+}
+
+void LEM::CreateAirfoils()
+{
+	if (docksla && GetDockStatus(docksla))
+	{
+		SetCW(0, 0, 0, 0);
+	}
+	else
+	{
+		SetCW(0.1, 0.3, 1.4, 1.4);
+	}
 }
 
 void LEMLoadMeshes()

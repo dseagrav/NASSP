@@ -44,6 +44,8 @@
 #include "csmcomputer.h"
 #include "saturn.h"
 #include "saturn1b.h"
+#include "s1b.h"
+#include "sivb.h"
 #include "papi.h"
 #include "RCA110A.h"
 
@@ -98,10 +100,16 @@ LC34::LC34(OBJHANDLE hObj, int fmodel) : VESSEL2 (hObj, fmodel) {
 
 	firstTimestepDone = false;
 	LVName[0] = '\0';
+	SIBName[0] = '\0';
+	SIVBName[0] = '\0';
 	touchdownPointHeight = -0.01; // pad height
 	hLV = 0;
 	sat = 0;
+	s1b = NULL;
+	sivb = NULL;
 	state = STATE_PRELAUNCH;
+	LaunchMJD = 99999.9;
+	MissionTime = 0.0;
 	Hold = false;
 	bCommit = false;
 
@@ -169,6 +177,7 @@ void LC34::clbkPostCreation()
 		for (int i = 0; i < vcount; i++) {
 			OBJHANDLE h = oapiGetVesselByIndex(i);
 			oapiGetObjectName(h, buffer, 256);
+			//Connect either the Saturn1b class or S-IB and S-IVB
 			if (!strcmp(LVName, buffer)) {
 				hLV = h;
 				sat = (Saturn1b *)oapiGetVesselInterface(hLV);
@@ -177,6 +186,14 @@ void LC34::clbkPostCreation()
 					IuUmb->Connect(sat->GetIU());
 					SCMUmb->Connect(sat->GetSIB());
 				}
+			}
+			else if (!strcmp(SIBName, buffer)) {
+				s1b = (S1B *)oapiGetVesselInterface(h);
+				SCMUmb->Connect(s1b->GetSIB());
+			}
+			else if (!strcmp(SIVBName, buffer)) {
+				sivb = (SIVB *)oapiGetVesselInterface(h);
+				IuUmb->Connect(sivb->GetIU());
 			}
 		}
 	}
@@ -189,6 +206,8 @@ void LC34::clbkPostCreation()
 void LC34::clbkPreStep(double simt, double simdt, double mjd)
 {
 	if (!firstTimestepDone) DoFirstTimestep();
+
+	MissionTime = (oapiGetSimMJD() - LaunchMJD)*24.0*3600.0;
 
 	if (swingarmState.Moving()) {
 		double dp = simdt * 0.25;
@@ -204,15 +223,13 @@ void LC34::clbkPreStep(double simt, double simdt, double mjd)
 			SetAnimation(mssAnim, mssProc);
 		}
 
-		// T-33min or later?
-		if (!sat) break;
-
-		if (sat->GetMissionTime() > -3 * 3600)
+		if (MissionTime > -3 * 3600)
 		{
-			sat->ActivatePrelaunchVenting();
+			if (sat) sat->ActivatePrelaunchVenting();
 		}
 
-		if (sat->GetMissionTime() > -33 * 60) {
+		// T-33min or later?
+		if (MissionTime > -33 * 60) {
 			mssProc = 1;
 			SetAnimation(mssAnim, mssProc);
 			state = STATE_CMARM1;
@@ -226,16 +243,14 @@ void LC34::clbkPreStep(double simt, double simdt, double mjd)
 			SetAnimation(cmarmAnim, cmarmProc);
 		}
 
+		if (sat) sat->ActivatePrelaunchVenting();
+
 		// T-5min or later?
-		if (!sat) break;
-
-		sat->ActivatePrelaunchVenting();
-
-		if (sat->GetMissionTime() > -5 * 60) {
+		if (MissionTime > -5 * 60) {
 			cmarmProc = 12.0 / 180.0 * 0.7;
 			SetAnimation(cmarmAnim, cmarmProc);
 			state = STATE_CMARM2;
-		}  
+		}
 		break;
 
 	case STATE_CMARM2:
@@ -245,12 +260,10 @@ void LC34::clbkPreStep(double simt, double simdt, double mjd)
 			SetAnimation(cmarmAnim, cmarmProc);
 		}
 
-		if (!sat) break;
-
-		sat->ActivatePrelaunchVenting();
+		if (sat) sat->ActivatePrelaunchVenting();
 
 		// T-2:43min or later?
-		if (sat->GetMissionTime() > -163.0)
+		if (MissionTime > -163.0)
 		{
 			if (CutoffInterlock())
 			{
@@ -266,18 +279,21 @@ void LC34::clbkPreStep(double simt, double simdt, double mjd)
 
 		break;
 	case STATE_TERMINAL_COUNT:
-		if (!sat) break;
 
-		sat->ActivatePrelaunchVenting();
+		if (sat) sat->ActivatePrelaunchVenting();
 
-		//GRR should happen at a fairly precise time and usually happens on the next timestep, so adding oapiGetSimStep is a decent solution
-		if (sat->GetMissionTime() >= -(17.0 + oapiGetSimStep()))
+		///GRR should happen at a fairly precise time and usually happens on the next timestep, so adding oapiGetSimStep is a decent solution
+		if (MissionTime >= -(17.0 + oapiGetSimStep()))
 		{
 			IuESE->SetGuidanceReferenceRelease(true);
 		}
+		else
+		{
+			IuUmb->LVDCPrepareToLaunch();
+		}
 
 		// T-3.1s or later?
-		if (sat->GetMissionTime() > -3.1)
+		if (MissionTime > -3.1)
 		{
 			if (CutoffInterlock())
 			{
@@ -286,7 +302,7 @@ void LC34::clbkPreStep(double simt, double simdt, double mjd)
 			}
 			else if (Hold == false)
 			{
-				sat->DeactivatePrelaunchVenting();
+				if (sat) sat->DeactivatePrelaunchVenting();
 				state = STATE_IGNITION_SEQUENCE;
 			}
 			else break;
@@ -295,12 +311,23 @@ void LC34::clbkPreStep(double simt, double simdt, double mjd)
 		//Fall Into
 	case STATE_IGNITION_SEQUENCE:
 
-		if (!sat) break;
-
-		if (sat->GetMissionTime() > -2.0 && sat->GetMissionTime() < -1.0)
-			liftoffStreamLevel = sat->GetSIThrustLevel()*(sat->GetMissionTime() + 2.0) / 1.0;
+		double lvl;
+		if (sat)
+		{
+			lvl = sat->GetSIThrustLevel();
+		}
+		else if (s1b)
+		{
+			lvl = s1b->GetThrusterGroupLevel(THGROUP_MAIN);
+		}
 		else
-			liftoffStreamLevel = sat->GetSIThrustLevel();
+		{
+			lvl = 0.0;
+		}
+		if (MissionTime > -2.0 && MissionTime < -1.0)
+			liftoffStreamLevel = lvl * (MissionTime + 2.0) / 1.0;
+		else
+			liftoffStreamLevel = lvl;
 
 		if (CutoffInterlock())
 		{
@@ -310,44 +337,61 @@ void LC34::clbkPreStep(double simt, double simdt, double mjd)
 		else if (Hold == false)
 		{
 			//Hold-down force
-			sat->AddForce(_V(0, 0, -8. * sat->GetFirstStageThrust()), _V(0, 0, 0)); // Maintain hold-down lock
+			if (sat)
+			{
+				sat->AddForce(_V(0, 0, -8. * sat->GetFirstStageThrust()), _V(0, 0, 0)); // Maintain hold-down lock
+			}
+			else if (s1b)
+			{
+				s1b->AddForce(_V(0, 0, -8. * 1008000), _V(0, 0, 0)); // Maintain hold-down lock
+			}
 
-			if (sat->GetMissionTime() > -3.1)
+			if (MissionTime > -3.1)
 			{
 				SCMUmb->SetEngineStart(5);
 				SCMUmb->SetEngineStart(7);
 			}
-			if (sat->GetMissionTime() > -3.0)
+			if (MissionTime > -3.0)
 			{
 				SCMUmb->SetEngineStart(6);
 				SCMUmb->SetEngineStart(8);
 			}
-			if (sat->GetMissionTime() > -2.9)
+			if (MissionTime > -2.9)
 			{
 				SCMUmb->SetEngineStart(2);
 				SCMUmb->SetEngineStart(4);
 			}
-			if (sat->GetMissionTime() > -2.8)
+			if (MissionTime > -2.8)
 			{
 				SCMUmb->SetEngineStart(1);
 				SCMUmb->SetEngineStart(3);
 			}
 
 			// T-1s or later?
-			if (sat->GetMissionTime() > -1) {
+			if (MissionTime > -1) {
 				state = STATE_LIFTOFF;
 			}
 		}
 
 		break;
-	
-	case STATE_LIFTOFF:
-		if (!sat) break;
 
-		liftoffStreamLevel = sat->GetSIThrustLevel();
+	case STATE_LIFTOFF:
+
+		if (sat)
+		{
+			liftoffStreamLevel = sat->GetSIThrustLevel();
+		}
+		else if (s1b)
+		{
+			liftoffStreamLevel = s1b->GetThrusterGroupLevel(THGROUP_MAIN);
+		}
+		else
+		{
+			liftoffStreamLevel = 0.0;
+		}
 
 		//Cutoff
-		if (sat->GetMissionTime() > 6.0 && sat->GetStage() <= PRELAUNCH_STAGE)
+		if (MissionTime > 6.0 && (sat && sat->GetStage() <= PRELAUNCH_STAGE))
 		{
 			SCMUmb->SIGSECutoff(true);
 		}
@@ -360,12 +404,19 @@ void LC34::clbkPreStep(double simt, double simdt, double mjd)
 		else if (Hold == false)
 		{
 			// Soft-Release Pin Dragging
-			if (sat->GetMissionTime() < 0.5) {
-				double PinDragFactor = min(1.0, 1.0 - (sat->GetMissionTime() * 2.0));
-				sat->AddForce(_V(0, 0, -(sat->GetFirstStageThrust() * PinDragFactor)), _V(0, 0, 0));
+			if (MissionTime < 0.5) {
+				double PinDragFactor = min(1.0, 1.0 - (MissionTime * 2.0));
+				if (sat)
+				{
+					sat->AddForce(_V(0, 0, -(sat->GetFirstStageThrust() * PinDragFactor)), _V(0, 0, 0));
+				}
+				else if (s1b)
+				{
+					s1b->AddForce(_V(0, 0, -8. * 1008000 * PinDragFactor), _V(0, 0, 0));
+				}
 			}
 
-			if (bCommit == false && sat->GetMissionTime() >= (-0.05 - simdt))
+			if (bCommit == false && MissionTime >= (-0.05 - simdt))
 			{
 				if (Commit())
 				{
@@ -393,20 +444,35 @@ void LC34::clbkPreStep(double simt, double simdt, double mjd)
 			}
 
 			// T+4s or later?
-			if (sat->GetMissionTime() > 4) {
+			if (MissionTime > 4) {
 				state = STATE_POSTLIFTOFF;
 			}
 		}
-		
-	break;
+
+		break;
 
 	case STATE_POSTLIFTOFF:
 
-		if (!sat) break;
+		if (MissionTime < 10.0)
+		{
+			double lvl;
+			if (sat)
+			{
+				lvl = sat->GetSIThrustLevel();
+			}
+			else if (s1b)
+			{
+				lvl = s1b->GetThrusterGroupLevel(THGROUP_MAIN);
+			}
+			else
+			{
+				lvl = 0.0;
+			}
 
-		if (sat->GetMissionTime() < 10.0)
-			liftoffStreamLevel = sat->GetSIThrustLevel()*(sat->GetMissionTime() - 10.0) / -6.0;
-		else {
+			liftoffStreamLevel = lvl *(MissionTime - 10.0) / -6.0;
+		}
+		else
+		{
 			liftoffStreamLevel = 0;
 
 			//
@@ -415,6 +481,10 @@ void LC34::clbkPreStep(double simt, double simdt, double mjd)
 			//
 			hLV = 0;
 			sat = 0;
+			SIBName[0] = '\0';
+			SIVBName[0] = '\0';
+			s1b = NULL;
+			sivb = NULL;
 		}
 		break;
 	}
@@ -422,7 +492,7 @@ void LC34::clbkPreStep(double simt, double simdt, double mjd)
 	//IU ESE
 	if (sat && state >= STATE_PRELAUNCH)
 	{
-		IuESE->Timestep(sat->GetMissionTime(), simdt);
+		IuESE->Timestep(MissionTime, simdt);
 		SIBESE->Timestep();
 	}
 }
@@ -488,8 +558,11 @@ void LC34::clbkLoadStateEx(FILEHANDLE scn, void *status) {
 
 	while (oapiReadScenario_nextline (scn, line)) {
 
+		papiReadScenario_double(line, "LAUNCHMJD", LaunchMJD);
 		papiReadScenario_bool(line, "HOLD", Hold);
 		papiReadScenario_bool(line, "COMMIT", bCommit);
+		papiReadScenario_string(line, "SIBNAME", SIBName);
+		papiReadScenario_string(line, "SIVBNAME", SIVBName);
 		if (!strnicmp (line, "STATE", 5)) {
 			sscanf (line + 5, "%i", &state);
 		} else if (!strnicmp (line, "TOUCHDOWNPOINTHEIGHT", 20)) {
@@ -522,7 +595,11 @@ void LC34::clbkSaveState(FILEHANDLE scn) {
 	WriteScenario_state(scn, "SWINGARMSTATE", swingarmState);
 	if (LVName[0])
 		oapiWriteScenario_string(scn, "LVNAME", LVName);
-
+	if (SIBName[0])
+		oapiWriteScenario_string(scn, "SIBNAME", SIBName);
+	if (SIVBName[0])
+		oapiWriteScenario_string(scn, "SIVBNAME", SIVBName);
+	papiWriteScenario_double(scn, "LAUNCHMJD", LaunchMJD);
 }
 
 int LC34::clbkConsumeDirectKey(char *kstate) {
@@ -669,13 +746,40 @@ int LC34::clbkConsumeBufferedKey(DWORD key, bool down, char *kstate) {
 
 bool LC34::CutoffInterlock()
 {
-	return IuUmb->IsEDSUnsafeA() || IuUmb->IsEDSUnsafeB() || SCMUmb->SIStageLogicCutoff();
+	if (IuUmb->IsEDSUnsafeA())
+	{
+		oapiWriteLog("LC34: EDS Unsafe A signal received. Countdown Hold!");
+		return true;
+	}
+	else if (IuUmb->IsEDSUnsafeB())
+	{
+		oapiWriteLog("LC34: EDS Unsafe B signal received. Countdown Hold!");
+		return true;
+	}
+	else if (SCMUmb->SIStageLogicCutoff())
+	{
+		oapiWriteLog("LC34: S-I Stage Logic Cutoff signal received. Countdown Hold!");
+		return true;
+	}
+
+	return false;
 }
 
 bool LC34::Commit()
 {
-	if (!sat) return false;
-	return IuUmb->AllSIEnginesRunning() && !CutoffInterlock();
+	if (!sat && (!s1b || !sivb)) return false;
+
+	if (IuUmb->AllSIEnginesRunning() == false)
+	{
+		oapiWriteLog("LC34: All Engines Running signal not received. Countdown Hold!");
+		return false;
+	}
+	else if (CutoffInterlock())
+	{
+		return false;
+	}
+
+	return true;
 }
 
 bool LC34::ESEGetCommandVehicleLiftoffIndicationInhibit()

@@ -79,9 +79,9 @@ BEGIN
     LTEXT           "ID:",IDC_STATIC_RSL,113,96,10,10
 END
 
-IDD_PAGEMISC DIALOG 0, 0, 232, 195
+IDD_PAGEMISC DIALOGEX 0, 0, 232, 195
 STYLE DS_SETFONT | DS_3DLOOK | WS_CHILD
-FONT 8, "MS Sans Serif"
+FONT 8, "MS Sans Serif", 0, 0, 0x0
 BEGIN
     GROUPBOX        "Time Acceleration",IDC_STATIC,7,7,219,47
     LTEXT           "Max. time acceleration (0=unlimited):",IDC_STATIC_TIMEACC,13,19,116,10
@@ -93,6 +93,9 @@ BEGIN
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,83,207,10
     CONTROL         "Enable automatic checklist execution",IDC_CHECK_VAGCCHECKLISTAUTOENABLED,
                     "Button",BS_AUTOCHECKBOX | WS_TABSTOP,13,70,149,10
+    GROUPBOX        "Other",IDC_STATIC,7,105,219,32
+    CONTROL         "Enable VC flight instruments in debug string (e.g. during PDI)",IDC_CHECK_VCINFOENABLED,
+                    "Button",BS_AUTOCHECKBOX | WS_TABSTOP,14,119,206,10
 END
 
 
@@ -157,6 +160,11 @@ END
 //
 
 IDD_PAGECONTROL AFX_DIALOG_LAYOUT
+BEGIN
+    0
+END
+
+IDD_PAGEMISC AFX_DIALOG_LAYOUT
 BEGIN
     0
 END

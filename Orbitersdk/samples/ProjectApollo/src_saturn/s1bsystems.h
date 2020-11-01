@@ -77,7 +77,7 @@ class Sound;
 class SIBSystems
 {
 public:
-	SIBSystems(VESSEL *v, THRUSTER_HANDLE *h1, PROPELLANT_HANDLE &h1prop, Pyro &SIB_SIVB_Sep, Sound &LaunchS, Sound &SShutS, double &contraillvl);
+	SIBSystems(VESSEL *v, THRUSTER_HANDLE *h1, PROPELLANT_HANDLE &h1prop, Pyro &SIB_SIVB_Sep, Sound &LaunchS, Sound &SShutS);
 	void Timestep(double misst, double simdt);
 	void SaveState(FILEHANDLE scn);
 	void LoadState(FILEHANDLE scn);
@@ -98,6 +98,7 @@ public:
 	void SetOutboardEnginesCutoff() { OutboardEnginesCutoffLatch = true; }
 	void SetLOXDepletionCutoffEnable() { LOXDepletionCutoffEnabledLatch = true; }
 	void SetFuelDepletionCutoffEnable() { FuelDepletionCutoffEnabledLatch = true; }
+	void Set_SIB_SIVB_SeparationCmdLatch() { SIB_SIVB_SeparationCmdLatch = true; }
 	void EDSEnginesCutoff(bool cut);
 	virtual void GSEEnginesCutoff(bool cut);
 
@@ -107,6 +108,7 @@ public:
 	bool GetOutboardEnginesCutoff();
 	void GetThrustOK(bool *ok);
 	virtual bool GetEngineStop();
+	bool FireRetroRockets();
 
 	virtual void ConnectUmbilical(SCMUmbilical *umb);
 	virtual void DisconnectUmbilical();
@@ -121,7 +123,6 @@ protected:
 	Pyro &SIB_SIVB_Separation_Pyros;
 	Sound &SShutSound;
 	Sound &LaunchSound;
-	double &contrailLevel;
 
 	H1Engine h1engine1;
 	H1Engine h1engine2;
@@ -142,10 +143,14 @@ protected:
 	bool InboardEnginesCutoffRelay;
 	//K7
 	bool OutboardEnginesCutoffRelay;
+	//K15
+	bool EBWFiringUnit1TriggerRelay;
 	//K18
 	bool LowPropellantLevelRelay;
 	//K22
 	bool PropLevelSensorsEnabledAndRedundantChargingRelay;
+	//K23
+	bool EBWFiringUnit2TriggerRelay;
 	//K42
 	bool MultipleEngineCutoffEnabledLatch1;
 	//K44
@@ -158,6 +163,8 @@ protected:
 	bool LOXDepletionCutoffEnabledLatch;
 	//K50
 	bool OutboardEnginesCutoffLatch;
+	//K51
+	bool SIB_SIVB_SeparationCmdLatch;
 	//K53
 	bool LOXDepletionCutoffEnabledRelay;
 	//K58

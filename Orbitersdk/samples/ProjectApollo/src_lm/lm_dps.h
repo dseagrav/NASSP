@@ -183,6 +183,7 @@ public:
 	bool engPreValvesArm;		// Engine Prevalves Arm Command
 	double thrustcommand;		// DPS Thrust Command
 	double ActuatorValves;
+	double PropellantShutoffValves;
 
 	double ThrustChamberPressurePSI;
 

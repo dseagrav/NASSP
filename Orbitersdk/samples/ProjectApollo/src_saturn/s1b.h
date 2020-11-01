@@ -22,6 +22,13 @@
 
   **************************************************************************/
 
+#pragma once
+
+#include "s1bsystems.h"
+#include "PanelSDK/PanelSDK.h"
+#include "pyro.h"
+#include "soundlib.h"
+
 //
 // Data structure passed from main vessel to SIVB to configure stage.
 //
@@ -65,7 +72,6 @@ typedef struct {
 	double THRUST_FIRST_VAC;				///< Single-engine thrust in vacuum.
 	double ISP_FIRST_VAC;					///< ISP in vacuum.
 	double ISP_FIRST_SL;					///< ISP at sea-level.
-	double MissionTime;						///< Current MET.
 	double EmptyMass;						///< Empty mass in kg.
 	double MainFuelKg;						///< Current fuel mass in kg.
 	double CurrentThrust;					///< Current thrust level (0.0 to 1.0)
@@ -91,6 +97,29 @@ enum S1bState
 	S1B_STATE_WAITING					///< S1b is idle after motor burnout.
 };
 
+class S1B;
+
+class SIBConnector : public Connector
+{
+public:
+	SIBConnector();
+	~SIBConnector();
+
+	void SetSIB(S1B *sat) { OurVessel = sat; };
+
+protected:
+	S1B *OurVessel;
+};
+
+class SIBtoSIVBConnector : public SIBConnector
+{
+public:
+	SIBtoSIVBConnector();
+	~SIBtoSIVBConnector();
+
+	bool ReceiveMessage(Connector *from, ConnectorMessage &m);
+};
+
 ///
 /// This code simulates the seperated S1b stage. Basically it simulates thrust decay if there is any fuel 
 /// left, fires any retro rockets to push it away from the Saturn and then sits around waiting to be deleted.
@@ -98,7 +127,7 @@ enum S1bState
 /// \brief S1b stage simulation.
 /// \ingroup SepStages
 ///
-class S1B : public VESSEL2 {
+class S1B : public ProjectApolloConnectorVessel {
 
 public:
 	///
@@ -139,6 +168,8 @@ public:
 	///
 	void clbkDockEvent(int dock, OBJHANDLE connected);
 
+	void clbkPostCreation();
+
 	///
 	/// Pass settings from the main DLL to the jettisoned S1b. This call must be virtual 
 	/// so it can be called from other DLLs without building in the S1b code.
@@ -149,15 +180,23 @@ public:
 	virtual void SetState(S1BSettings &state);
 	virtual void LoadMeshes(bool lowres);
 
+	virtual SIBSystems* GetSIB() { return &sibsys; }
+
+	void SetH1ThrusterDir(int n, double beta_y, double beta_p);
+	void SwitchSelector(int channel);
+	bool GetLowLevelSensorsDry();
+	bool GetSIPropellantDepletionEngineCutoff();
+	void GetSIThrustOK(bool *ok);
+
 protected:
 
-	void SetS1b();
-	void InitS1b();
 	void AddEngines();
-	void ShowS1b();
+	void SeparateSIVB();
 
 	int GetMainState();
 	void SetMainState(int s);
+
+	void CreateAirfoils();
 
 	int MissionNo;
 	int VehicleNo;
@@ -172,10 +211,6 @@ protected:
 	double PayloadMass;
 	double MainFuel;
 
-	double MissionTime;
-	double NextMissionEventTime;
-	double LastMissionEventTime;
-
 	double THRUST_FIRST_VAC;
 	double ISP_FIRST_VAC;
 	double ISP_FIRST_SL;
@@ -185,4 +220,12 @@ protected:
 	THRUSTER_HANDLE th_retro[4], th_main[8];
 	THGROUP_HANDLE thg_retro, thg_main;
 	PROPELLANT_HANDLE ph_retro, ph_main;
+	DOCKHANDLE hDockSIVB;                        // docking connector to S-IVB
+
+	PanelSDK Panelsdk;
+	SIBSystems sibsys;
+	Pyro SIB_SIVB_Sep;
+	Sound LaunchS, SShutS;
+
+	SIBtoSIVBConnector sibSIVBConnector;
 };

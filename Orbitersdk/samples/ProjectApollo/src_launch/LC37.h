@@ -29,7 +29,8 @@
 #include "SCMUmbilicalInterface.h"
 #include "LCCPadInterface.h"
 
-class LEMSaturn;
+class S1B;
+class SIVB;
 class IUUmbilical;
 class IU_ESE;
 class SCMUmbilical;
@@ -85,10 +86,12 @@ protected:
 	bool firstTimestepDone;
 	bool abort;
 	double touchdownPointHeight;
-	char LVName[256];
+	char SIBName[256];
+	char SIVBName[256];
 	SoundLib soundlib;
-	OBJHANDLE hLV;
 	int state;
+	double LaunchMJD;
+	double MissionTime;
 
 	PSTREAM_HANDLE liftoffStream[2];
 	double liftoffStreamLevel;
@@ -97,10 +100,11 @@ protected:
 	void SetTouchdownPointHeight(double height);
 	void DefineAnimations();
 
-	LEMSaturn *sat;
 	IUUmbilical *IuUmb;
 	SCMUmbilical *SCMUmb;
 	IU_ESE *IuESE;
 	SIB_ESE *SIBESE;
 	RCA110AM *rca110a;
+	S1B *s1b;
+	SIVB *sivb;
 };

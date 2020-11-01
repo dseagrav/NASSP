@@ -491,6 +491,7 @@ LEM_DPS::LEM_DPS(THRUSTER_HANDLE *dps) :
 	thrustcommand = 0;
 	ThrustChamberPressurePSI = 0.0;
 	ActuatorValves = 0.0;
+	PropellantShutoffValves = 0.0;
 
 	anim_DPSGimbalPitch = -1;
 	anim_DPSGimbalRoll = -1;
@@ -621,27 +622,33 @@ void LEM_DPS::Timestep(double simt, double simdt) {
 		ActuatorValves = 0.0;
 	}
 
-	if (dpsThruster[0]) {
-
-		//Set Thruster Resource
-		if (engPreValvesArm)
-		{
-			lem->SetThrusterResource(dpsThruster[0], lem->ph_Dsc);
-		}
-		else
-		{
-			lem->SetThrusterResource(dpsThruster[0], NULL);
-		}
-
+	if (dpsThruster[0])
+	{
 		//Engine Fire Command
 		if (engPreValvesArm && thrustOn)
 		{
-			lem->SetThrusterLevel(dpsThruster[0], thrustcommand*ActuatorValves);
+			if (PropellantShutoffValves < ActuatorValves)
+			{
+				//Flight experience from Apollo 9, about 2.1 seconds from 0 to full
+				PropellantShutoffValves += 1.0 / 2.1*simdt;
+			}
+			//This prevents overshooting from the code above and accounts for the actuator valves slowly closing when the actuator pressure drops
+			if (PropellantShutoffValves > ActuatorValves)
+			{
+				PropellantShutoffValves = ActuatorValves;
+			}
 		}
 		else
 		{
-			lem->SetThrusterLevel(dpsThruster[0], 0.0);
+			if (PropellantShutoffValves > 0)
+			{
+				// 38cs cutoff delay at 100% thrust in GSOP. To reach the same impulse, linear thrust decay over twice that time.
+				PropellantShutoffValves -= 1.0 / 0.76*simdt;
+				if (PropellantShutoffValves < 0) PropellantShutoffValves = 0.0;
+			}
 		}
+
+		lem->SetThrusterLevel(dpsThruster[0], thrustcommand*PropellantShutoffValves);
 
 		//103.4PSI at FTP (uneroded)
 		ThrustChamberPressurePSI = lem->GetThrusterMax(dpsThruster[0])*lem->GetThrusterLevel(dpsThruster[0])*103.4 / DPS_FCMAX;
@@ -677,7 +684,7 @@ void LEM_DPS::Timestep(double simt, double simdt) {
 		}
 
 		//sprintf(oapiDebugString(), "Start: %d, Stop: %d Lever: %f Throttle Cmd: %f engPreValvesArm %d engArm %d thrustOn: %d", lem->ManualEngineStart.GetState(), lem->CDRManualEngineStop.GetState(), lem->ttca_throttle_pos_dig, thrustcommand, engPreValvesArm, engArm, thrustOn);
-		//sprintf(oapiDebugString(), "DPS %d rollc: %d, roll: %f° pitchc: %d, pitch: %f°", thrustOn, rollGimbalActuator.GetLGCPosition(), rollGimbalActuator.GetPosition(), pitchGimbalActuator.GetLGCPosition(), pitchGimbalActuator.GetPosition());
+		//sprintf(oapiDebugString(), "DPS %d rollc: %d, roll: %f° pitchc: %d, pitch: %f°", thrustOn, rollGimbalActuator.GetCmdPosition(), rollGimbalActuator.GetPosition(), pitchGimbalActuator.GetCmdPosition(), pitchGimbalActuator.GetPosition());
 		//sprintf(oapiDebugString(), "lvl: %f Max Thr: %f Isp: %f Erosion %f", lem->GetThrusterLevel(dpsThruster[0]), lem->GetThrusterMax0(dpsThruster[0]), lem->GetThrusterIsp(dpsThruster[0]), Erosion);
 	}
 }
@@ -734,6 +741,7 @@ void LEM_DPS::SaveState(FILEHANDLE scn, char *start_str, char *end_str) {
 	oapiWriteScenario_int(scn, "ENGPREVALVESARM", (engPreValvesArm ? 1 : 0));
 	oapiWriteScenario_int(scn, "ENGARM", (engArm ? 1 : 0));
 	papiWriteScenario_double(scn, "EROSION", Erosion);
+	papiWriteScenario_double(scn, "PROPSHUTOFFVALVES", PropellantShutoffValves);
 	oapiWriteLine(scn, end_str);
 }
 
@@ -749,6 +757,7 @@ void LEM_DPS::LoadState(FILEHANDLE scn, char *end_str) {
 		papiReadScenario_bool(line, "ENGPREVALVESARM", engPreValvesArm);
 		papiReadScenario_bool(line, "ENGARM", engArm);
 		papiReadScenario_double(line, "EROSION", Erosion);
+		papiReadScenario_double(line, "PROPSHUTOFFVALVES", PropellantShutoffValves);
 	}
 }
 

@@ -28,6 +28,8 @@
 #include "SCMUmbilicalInterface.h"
 #include "LCCPadInterface.h"
 
+class S1B;
+class SIVB;
 class Saturn1b;
 class IUUmbilical;
 class IU_ESE;
@@ -90,9 +92,13 @@ protected:
 	int meshindexMSS;
 	double touchdownPointHeight;
 	char LVName[256];
+	char SIBName[256];
+	char SIVBName[256];
 	SoundLib soundlib;
 	OBJHANDLE hLV;
 	int state;
+	double LaunchMJD;
+	double MissionTime;
 	bool Hold;
 	bool bCommit;
 
@@ -111,6 +117,8 @@ protected:
 	void DefineAnimations();
 
 	Saturn1b *sat;
+	S1B *s1b;
+	SIVB *sivb;
 	IUUmbilical *IuUmb;
 	SCMUmbilical *SCMUmb;
 	IU_ESE *IuESE;

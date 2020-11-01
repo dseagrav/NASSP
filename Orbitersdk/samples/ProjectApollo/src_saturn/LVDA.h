@@ -63,6 +63,7 @@ public:
 	VECTOR3 GetLVIMUPIPARegisters();
 	bool GetLVIMUFailure();
 	bool GetGuidanceReferenceFailure();
+	VECTOR3 GetTheodoliteAlignment(double azimuth);
 
 	bool GeneralizedSwitchSelector(int stage, int channel);
 	bool TimebaseUpdate(double dt);
@@ -74,6 +75,8 @@ public:
 	bool ExecuteCommManeuver();
 	bool SIVBIULunarImpact(double tig, double dt, double pitch, double yaw);
 	bool LaunchTargetingUpdate(double V_T, double R_T, double theta_T, double inc, double dsc, double dsc_dot, double t_grr0);
+	bool NavigationUpdate(VECTOR3 DCSRVEC, VECTOR3 DCSVVEC, double DCSNUPTIM);
+	virtual void PrepareToLaunch();
 
 	void SetOutputRegisterBit(int bit, bool state);
 	virtual bool GetOutputRegisterBit(int bit);
@@ -100,11 +103,9 @@ public:
 	//Not real LVDA functions
 	void TLIBegun();
 	void TLIEnded();
-	void SwitchSelectorOld(int chan);
-	double GetMissionTime();
 	int GetStage();
 	void SetStage(int stage);
-	int GetApolloNo();
+	int GetVehicleNo();
 	void GetRelativePos(VECTOR3 &v);
 	void GetRelativeVel(VECTOR3 &v);
 	bool GetSCControlPoweredFlight();

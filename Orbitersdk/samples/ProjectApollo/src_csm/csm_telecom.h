@@ -514,3 +514,87 @@ protected:
 	ToggleSwitch *powerswitch;
 	ToggleSwitch *resetswitch;
 };
+
+class CSM_RRTto_LM_RRConnector;
+
+class RNDZXPDRSystem
+{
+public:
+	RNDZXPDRSystem();
+	~RNDZXPDRSystem();
+	void Init(Saturn *vessel, CircuitBrakerSwitch *PowerCB, ToggleSwitch *RNDZXPDRSwitch, ThreePosSwitch *Panel100RNDZXPDRSwitch, RotationalSwitch *LeftSystemTestRotarySwitch, RotationalSwitch *RightSystemTestRotarySwitch);
+	void TimeStep(double simdt);
+	void SystemTimestep(double simdt);
+	void LoadState(char *line);
+	void SaveState(FILEHANDLE scn);
+	void SetRCVDrfProp(double freq, double pow, double gain, double phase) { RCVDfreq = freq; RCVDpow = pow; RCVDgain = gain; RCVDPhase = phase; };
+
+	//these values are for the LEB101 test meter gauge
+	unsigned char GetScaledRFPower(); //RF power, converts a -122 to -18 dBm signal to a 2.1V to 5V output 
+	unsigned char GetScaledAGCPower(); //Automatic Gain Control, converts an - (-18) to - (-122) dBm signal to 0 to 4.5V output(AGV voltage down up when RF power received goes down)
+	unsigned char GetScaledFreqLock(); //frequency lock, output 4.5V when locked (use lockTimer as input to simulate freq locking)
+
+protected:
+	double GetCSMGain(double theta, double phi); //returns the gain of the csm RRT system for returned power calculations
+	void SendRF();
+
+	Saturn *sat;
+	LEM *lem;
+
+	double XMITpower;
+	double RCVDfreq;
+	double RCVDpow;
+	double RCVDgain;
+	double RCVDPhase;
+	double RCVDPowerdB;
+	double RNDZXPDRGain;
+	double RadarDist; //distance from CSM to LEM;
+	double theta, phi;
+	
+
+	double lockTimer;
+
+	enum FreqLock {
+		UNLOCKED,
+		LOCKED,
+	};
+
+	FreqLock haslock;
+	bool XPDRon;
+	bool XPDRheaterOn;
+	bool XPDRtest;
+
+	VECTOR3 lemPos;
+	VECTOR3 csmPos;
+	VECTOR3 R;
+	VECTOR3 U_R;
+	VECTOR3 U_R_RR;
+	MATRIX3 LMRot, CSMRot;
+
+	//not implimented yet
+	//RRT_RFpowerXDUCER RFpowerXDUCER;
+	//RRT_AGC_XDUCER AGC_XDUCER;
+	//RRT_FREQLOCK_XDUCER FREQLOCK_XDUCER;
+
+	CircuitBrakerSwitch *RRT_FLTBusCB;
+	ToggleSwitch *TestOperateSwitch; //test operate switch
+	ThreePosSwitch *HeaterPowerSwitch; //heater/power switch
+	RotationalSwitch *RRT_LeftSystemTestRotarySwitch;
+	RotationalSwitch *RRT_RightSystemTestRotarySwitch;
+};
+
+//not implimented yet
+//class RRT_RFpowerXDUCER : public Transducer //RF power tranducer, converts a -122 to -18 dBm signal to a 2.1V to 5V output
+//{
+//	
+//};
+//
+//class RRT_AGC_XDUCER : public Transducer//Automatic Gain Control transducer, converts an -(-18) to -(-122) dBm signal to 0 to 4.5V output (AGV voltage down up when RF power received goes down)
+//{
+//
+//};
+//
+//class RRT_FREQLOCK_XDUCER : public Transducer //frequency lock transducer, output 4.5V when locked (use lockTimer as input to simulate freq locking)
+//{
+//
+//};

@@ -25,6 +25,8 @@
 #ifndef __PYRO_H
 #define __PYRO_H
 
+#include "PanelSDK/Internals/Esystems.h"
+
 ///
 /// This class simulates a small explosive charge used to explosively seperate parts of
 /// the spacecraft.

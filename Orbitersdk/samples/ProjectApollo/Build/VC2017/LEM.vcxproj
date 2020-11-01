@@ -79,7 +79,7 @@
       <Culture>0x040c</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>../../src_aux/dsound.lib;PanelSDK.lib;orbiter.lib;orbitersdk.lib;OrbiterSoundSDK40.lib;opengl32.lib;glu32.lib;winmm.lib;../../src_aux/dinput8.lib;../../src_aux/dxguid.lib;WS2_32.lib;User32.lib;Gdi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>../../src_aux/dsound.lib;PanelSDK.lib;orbiter.lib;orbitersdk.lib;opengl32.lib;glu32.lib;winmm.lib;../../src_aux/dinput8.lib;../../src_aux/dxguid.lib;WS2_32.lib;User32.lib;Gdi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>../../../../../Modules/ProjectApollo/LEM.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>.\Release\PanelSDK;../../../../lib;../../../../../Sound/OrbiterSound_SDK/VESSELSOUND_SDK/ShuttlePB_project;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -128,7 +128,7 @@
       <Culture>0x040c</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>../../src_aux/dsound.lib;wsock32.lib;PanelSDK.lib;orbiter.lib;orbitersdk.lib;OrbiterSoundSDK40.lib;opengl32.lib;glu32.lib;winmm.lib;../../src_aux/dinput8.lib;../../src_aux/dxguid.lib;WS2_32.lib;User32.lib;Gdi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>../../src_aux/dsound.lib;wsock32.lib;PanelSDK.lib;orbiter.lib;orbitersdk.lib;opengl32.lib;glu32.lib;winmm.lib;../../src_aux/dinput8.lib;../../src_aux/dxguid.lib;WS2_32.lib;User32.lib;Gdi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>../../../../../Modules/ProjectApollo/LEM.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>;../../../../lib/Lua;.\Debug\PanelSDK;../../../../lib;../../../../../Sound/OrbiterSound_SDK/VESSELSOUND_SDK/ShuttlePB_project;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -158,7 +158,6 @@
     </ClCompile>
     <ClCompile Include="..\..\src_lm\CWEA_FlipFlop.cpp" />
     <ClCompile Include="..\..\src_lm\lemconnector.cpp" />
-    <ClCompile Include="..\..\src_lm\LEMSaturn.cpp" />
     <ClCompile Include="..\..\src_lm\lm_aca.cpp" />
     <ClCompile Include="..\..\src_lm\lm_aps.cpp" />
     <ClCompile Include="..\..\src_lm\lm_cwea.cpp" />
@@ -172,18 +171,6 @@
     <ClCompile Include="..\..\src_lm\lm_scea.cpp" />
     <ClCompile Include="..\..\src_lm\lm_ttca.cpp" />
     <ClCompile Include="..\..\src_rtccmfd\OrbMech.cpp" />
-    <ClCompile Include="..\..\src_saturn\dcs.cpp" />
-    <ClCompile Include="..\..\src_saturn\eds.cpp" />
-    <ClCompile Include="..\..\src_saturn\FCC.cpp" />
-    <ClCompile Include="..\..\src_saturn\iu.cpp" />
-    <ClCompile Include="..\..\src_saturn\IUAuxiliaryPowerDistributor.cpp" />
-    <ClCompile Include="..\..\src_saturn\IUControlDistributor.cpp" />
-    <ClCompile Include="..\..\src_saturn\IUControlSignalProcessor.cpp" />
-    <ClCompile Include="..\..\src_saturn\LVDA.cpp" />
-    <ClCompile Include="..\..\src_saturn\LVDC.cpp" />
-    <ClCompile Include="..\..\src_saturn\lvimu.cpp" />
-    <ClCompile Include="..\..\src_saturn\s1bsystems.cpp" />
-    <ClCompile Include="..\..\src_saturn\sivbsystems.cpp" />
     <ClCompile Include="..\..\src_sys\apolloguidance.cpp">
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
@@ -378,7 +365,6 @@
     <ClInclude Include="..\..\src_aux\Mission.h" />
     <ClInclude Include="..\..\src_lm\CWEA_FlipFlop.h" />
     <ClInclude Include="..\..\src_lm\lemconnector.h" />
-    <ClInclude Include="..\..\src_lm\LEMSaturn.h" />
     <ClInclude Include="..\..\src_lm\LM_AscentStageResource.h" />
     <ClInclude Include="..\..\src_lm\LM_DescentStageResource.h" />
     <ClInclude Include="..\..\src_lm\lm_eps.h" />
@@ -397,17 +383,6 @@
     <ClInclude Include="..\..\src_lm\lm_ttca.h" />
     <ClInclude Include="..\..\src_lm\LM_VC_Resource.h" />
     <ClInclude Include="..\..\src_rtccmfd\OrbMech.h" />
-    <ClInclude Include="..\..\src_saturn\dcs.h" />
-    <ClInclude Include="..\..\src_saturn\eds.h" />
-    <ClInclude Include="..\..\src_saturn\FCC.h" />
-    <ClInclude Include="..\..\src_saturn\IUAuxiliaryPowerDistributor.h" />
-    <ClInclude Include="..\..\src_saturn\IUControlDistributor.h" />
-    <ClInclude Include="..\..\src_saturn\IUControlSignalProcessor.h" />
-    <ClInclude Include="..\..\src_saturn\LVDA.h" />
-    <ClInclude Include="..\..\src_saturn\LVDC.h" />
-    <ClInclude Include="..\..\src_saturn\LVIMU.h" />
-    <ClInclude Include="..\..\src_saturn\s1bsystems.h" />
-    <ClInclude Include="..\..\src_saturn\sivbsystems.h" />
     <ClInclude Include="..\..\src_sys\apolloguidance.h" />
     <ClInclude Include="..\..\src_aux\BasicExcelVC6.hpp" />
     <ClInclude Include="..\..\src_sys\cautionwarning.h" />
@@ -421,7 +396,6 @@
     <ClInclude Include="..\..\src_sys\FDAI.h" />
     <ClInclude Include="..\..\src_sys\IMU.h" />
     <ClInclude Include="..\..\src_sys\ioChannels.h" />
-    <ClInclude Include="..\..\src_saturn\iu.h" />
     <ClInclude Include="..\..\src_lm\LEM.h" />
     <ClInclude Include="..\..\src_lm\LEMcomputer.h" />
     <ClInclude Include="..\..\src_lm\lemswitches.h" />

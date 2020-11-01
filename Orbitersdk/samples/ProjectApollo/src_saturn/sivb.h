@@ -25,7 +25,9 @@
 #if !defined(_PA_SIVB_H)
 #define _PA_SIVB_H
 
+#include "PanelSDK/PanelSDK.h"
 #include "payload.h"
+#include "pyro.h"
 
 //
 // Data structure passed from main vessel to SIVB to configure stage.
@@ -118,6 +120,7 @@ struct SIVBSettings
 };
 
 class SIVB;
+class Battery;
 
 ///
 /// \ingroup Connectors
@@ -159,6 +162,31 @@ public:
 	~PayloadToSLACommandConnector();
 
 	bool ReceiveMessage(Connector *from, ConnectorMessage &m);
+};
+
+//Messages to S-IB or S-II
+enum SIVBSIMessageType
+{
+	SIVB_SI_SWITCH_SELECTOR,
+	SIVB_SI_THRUSTER_DIR,
+	SIVB_SI_SIB_LOW_LEVEL_SENSORS_DRY,
+	SIVB_SI_PROPELLANT_DEPLETION_ENGINE_CUTOFF,
+	SIVB_SI_GETSITHRUSTOK
+};
+
+//S-IVB to S-IB or S-II Connector
+class SIVBToSIConnector : public SIVbConnector
+{
+public:
+	SIVBToSIConnector();
+	~SIVBToSIConnector();
+
+	void SISwitchSelector(int channel);
+	void SetSIThrusterDir(int n, double yaw, double pitch);
+
+	bool GetLowLevelSensorsDry();
+	bool GetSIPropellantDepletionEngineCutoff();
+	void GetSIThrustOK(bool *ok, int n);
 };
 
 ///
@@ -240,6 +268,7 @@ public:
 	/// \brief Orbiter dock state function.
 	///
 	void clbkDockEvent(int dock, OBJHANDLE connected);
+	void clbkPostCreation();
 
 	///
 	/// Pass settings from the main DLL to the jettisoned SIVb. This call must be virtual 
@@ -249,18 +278,20 @@ public:
 	///
 	virtual void SetState(SIVBSettings &state);
 
-	///
-	/// \brief Get mission time.
-	/// \return Mission time in seconds since launch.
-	///
-	double GetMissionTime();
+	int GetVehicleNo();
 
 	bool GetSIVBThrustOK();
 
 	void SetSIVBThrusterDir(double yaw, double pitch);
-	void SetAPSAttitudeEngine(int n, bool on) { sivbsys->SetAPSAttitudeEngine(n, on); }
+	void SetAPSAttitudeEngine(int n, bool on);
 	void SIVBEDSCutoff(bool cut);
 	void SIVBSwitchSelector(int channel);
+
+	//Signals to lower stages
+	void SISwitchSelector(int channel);
+	void SetSIThrusterDir(int n, double yaw, double pitch);
+	bool GetSIBLowLevelSensorsDry();
+	bool GetSIPropellantDepletionEngineCutoff();
 
 	IU *GetIU() { return iu; };
 
@@ -311,6 +342,12 @@ public:
 	///
 	void StopSeparationPyros();
 
+	void StartSLASeparationPyros();
+	void SeparateCSM();
+	bool IsLowerStageDocked();
+
+	SIVBToSIConnector *GetSIVBSIConnector() { return &sivbSIConnector; }
+
 protected:
 	///
 	/// PanelSDK functions as a interface between the
@@ -356,6 +393,10 @@ protected:
 	void AddRCS_S4B();				///< Add RCS for SIVb control.
 	void Boiloff();					///< Boil off some LOX/LH2 in orbit.
 
+	void CreateSISIVBInterface();
+	bool GetDockingPortFromHandle(OBJHANDLE port, UINT &num);
+	void CreateAirfoils();
+
 	bool PayloadIsDetachable();		///< Is the payload detachable?
 
 	VECTOR3	mainExhaustPos;			///< Position of main thruster exhaust.
@@ -387,6 +428,8 @@ protected:
 
 	double THRUST_THIRD_VAC;		///< J2 engine thrust vacuum level in Newtons.
 	double ISP_THIRD_VAC;			///< J2 engine ISP in vacuum.
+
+	double PayloadEjectionForce;	///< Force applied at "undocking" of the payload attached at the front of the SLA (CSM, nosecone etc.)
 
 	// Exterior light definitions
 	BEACONLIGHTSPEC dockingLights[5];             // docking lights
@@ -439,11 +482,12 @@ protected:
 	///
 
 	PayloadToSLACommandConnector payloadSeparationConnector;
+	SIVBToSIConnector sivbSIConnector;
 
 	///
 	/// \brief Handle of docked vessel.
 	///
-	DOCKHANDLE hDock;
+	DOCKHANDLE hDock, hDockSI, hDockCSM;
 
 	Battery *MainBattery;
 
@@ -465,6 +509,10 @@ protected:
 	int meshApollo8LTA, meshLTA_2r;
 
 	void HideAllMeshes();
+
+	Pyro CSMLVSeparationInitiator;
+	Pyro LMSLASeparationInitiators;
+	Pyro SLAPanelDeployInitiator;
 };
 
 ///

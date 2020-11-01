@@ -133,7 +133,7 @@ void LEM_Programer::ProcessChannel10(ChannelValue val)
 			lem->RCSAscFeed2BSwitch.SetState(THREEPOSSWITCH_CENTER);
 			break;
 		case 90: //LM/SLA Sep Fire
-			lem->LMSLASeparationFire();
+			lem->StartSeparationPyros();
 			break;
 		case 91: //LM/SLA Sep Fire Reset
 			break;

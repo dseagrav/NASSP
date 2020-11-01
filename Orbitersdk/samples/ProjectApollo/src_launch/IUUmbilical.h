@@ -63,6 +63,7 @@ public:
 	bool GetLVDCOutputRegisterDiscrete(int bit);
 	bool FCCPowerIsOn();
 	void SwitchSelector(int stage, int channel);
+	void LVDCPrepareToLaunch();
 
 	//From SLV to ML
 	virtual bool ESEGetCommandVehicleLiftoffIndicationInhibit();

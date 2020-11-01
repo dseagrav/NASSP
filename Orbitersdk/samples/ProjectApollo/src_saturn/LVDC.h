@@ -25,6 +25,9 @@
 #pragma once
 
 #include <vector>
+#include <bitset>
+
+#define LVDC_TIMESTEP 0.01
 
 class LVDA;
 
@@ -66,8 +69,15 @@ public:
 	virtual bool ExecuteCommManeuver() { return false; }
 	virtual bool LaunchTargetingUpdate(double V_T, double R_T, double theta_T, double inc, double dsc, double dsc_dot, double t_grr0) { return false; }
 	virtual bool DiscreteOutputTest(int bit, bool on) = 0;
+	virtual bool NavigationUpdate(VECTOR3 DCSRVEC, VECTOR3 DCSVVEC, double DCSNUPTIM) = 0;
+	void PrepareToLaunch();
 protected:
-
+	double RealTimeClock;
+	bool ReadyToLaunch;
+	int MinorLoopCounter;
+	int MinorLoopCycles;
+	//Start time of current time base measured from GRR
+	double TI;
 	LVDA &lvda;
 };
 
@@ -100,6 +110,7 @@ public:
 	bool SIVBIULunarImpact(double tig, double dt, double pitch, double yaw);
 	bool ExecuteCommManeuver();
 	bool DiscreteOutputTest(int bit, bool on);
+	bool NavigationUpdate(VECTOR3 DCSRVEC, VECTOR3 DCSVVEC, double DCSNUPTIM) { return false; }
 private:								// Saturn LV
 	FILE* lvlog;									// LV Log file
 	char FSPFileName[256];
@@ -121,7 +132,6 @@ private:								// Saturn LV
 	VECTOR3 WV;										// Gravity
 	double sinceLastCycle;							// Time since last IGM run
 	double sinceLastGuidanceCycle;					// Time since last guidance run during orbital flight
-	double IGMInterval;								// IGM Interval
 	int IGMCycle;									// IGM Cycle Counter (for debugging)
 	int OrbNavCycle;								// Orbital cycle counter (for debugging)
 	double t_S1C_CECO;								// Time since launch for S-1C center engine cutoff
@@ -508,11 +518,11 @@ public:
 	void ReadFlightSequenceProgram(char *fspfile);
 
 	void SwitchSelectorProcessing(std::vector<SwitchSelectorSet> table);
-	bool SwitchSelectorSequenceComplete(std::vector<SwitchSelectorSet> table);
+	bool SwitchSelectorSequenceComplete(std::vector<SwitchSelectorSet> &table);
 
-	bool GetGuidanceReferenceFailure() { return GuidanceReferenceFailure; }
+	bool GetGuidanceReferenceFailure() { return ModeCode27[MC27_GRFDiscretesSet]; }
 
-	double SVCompare();
+	VECTOR3 SVCompare();
 
 	//DCS Commands
 	bool TimebaseUpdate(double dt);
@@ -521,7 +531,17 @@ public:
 	bool InhibitAttitudeManeuver();
 	bool LaunchTargetingUpdate(double v_t, double r_t, double theta_t, double inc, double dsc, double dsc_dot, double t_grr0);
 	bool DiscreteOutputTest(int bit, bool on);
+	bool NavigationUpdate(VECTOR3 DCSRVEC, VECTOR3 DCSVVEC, double DCSNUPTIM);
+
+	//Public Variables
+	double Azimuth;									// Azimuth
+	double PHI;										// Geodetic latitude of launch site
+	double T_GRR;									// Time of GRR in seconds since midnight
 private:
+
+	VECTOR3 GravitationSubroutine(VECTOR3 Rvec, bool J2only);
+	VECTOR3 DragSubroutine(VECTOR3 Rvec, VECTOR3 Vvec);
+
 	bool Initialized;								// Clobberness flag
 	FILE* lvlog;									// LV Log file
 	char FSPFileName[256];
@@ -534,11 +554,11 @@ private:
 	// These are boolean flags that are NOT real flags in the LVDC SOFTWARE. (I.E. Hardware flags)
 	bool LVDC_GRR;                                  // Guidance Reference Released
 	bool CountPIPA;									// PIPA Counter Enable
-	bool GuidanceReferenceFailure;
 	
 	// These are variables that are not really part of the LVDC software.
 	VECTOR3 AttitudeError;                          // Attitude Error
 	VECTOR3 DeltaAtt;
+	VECTOR3 AttitudeErrorOld;
 	int CommandSequence;
 
 	// Event Times
@@ -557,16 +577,14 @@ private:
 	double dt_LET;									// Nominal interval between S2 ignition and LET jettison
 	// IGM event times
 	double sinceLastIGM;							// Time since last IGM run
-	double IGMInterval;								// IGM Interval
+	int OrbitalGuidanceCycle;						// Number of minor loops since since last guidance run during orbital flight
 	double T_1;										// Time left in first-stage IGM
 	double T_2;										// Time left in second and fourth stage IGM
-	double T_GRR;									// Time of GRR in seconds since midnight
 	double t_D;										// Time of launch after reference launch time (time of launch after window opens)
 
 	// These are boolean flags that are real flags in the LVDC SOFTWARE.
 	bool GRR_init;									// GRR initialization done
 	bool poweredflight;								// Powered flight flag
-	bool liftoff;									// lift-off flag
 	bool S1B_Engine_Out;							// S1C Engine Failure Flag
 	bool S1B_CECO_Commanded;
 	bool HSL;										// High-Speed Loop flag
@@ -574,13 +592,10 @@ private:
 	int  UP;										// IGM target parameters updated
 	bool BOOST;										// Boost To Orbit
 	bool S4B_IGN;									// SIVB Ignition
-	bool MRS;										// MR Shift
 	bool GATE;										// Logic gate for switching IGM steering
 	bool GATE5;										// Logic gate that ensures only one pass through cutoff initialization
-	bool INH,INH1,INH2;								// Dunno yet
 	bool TerminalConditions;						// Use preset terminal conditions (R_T, V_T, gamma_T and G_T) for into-orbit targeting
-	bool PermanentSCControl;						// SC has permanent control of the FCC
-	bool SCControlOfSaturn;							// SC has taken control of the Saturn
+	std::bitset<26> ModeCode24, ModeCode25, ModeCode27;
 
 	// LVDC software variables, PAD-LOADED BUT NOT NECESSARILY CONSTANT!
 	double A_zL;									// Position I Azimuth
@@ -598,7 +613,6 @@ private:
 	double eps_4;									// Time for cutoff logic entry
 	double ROV;										// Constant for biasing terminal-range-angle
 	double mu;										// Product of G and Earth's mass
-	double PHI;										// Geodetic latitude of launch site
 	double PHIP;									// Geocentric latitude of launch site
 	double KSCLNG;									// Longitude of the launch site
 	double R_L;										// Radius from geocentric center of the Earth to the center of the IU on launch pad
@@ -608,33 +622,24 @@ private:
 	double t_B1;									// Transition time for the S2 mixture ratio to shift from 5.5 to 4.7
 	double t_B3;									// Time from second S2 MRS signal
 	double t;										// Time from accelerometer reading to next steering command
-	double TA1,TA2,TA3;								// Time parameters for on-orbit maneuvers
 	double SMCG;									// Steering misalignment correction gain
 	double TSMC1,TSMC2;								// Time test for steering misalignment test relative to TB3,TB4
-	double alpha_1;									//orbital guidance pitch
-	double alpha_2;									//orbital guidance yaw
-	double K_P1;									// restart attitude coefficients
-	double K_P2;
-	double K_Y1;
-	double K_Y2;
-	double TI5F2;									// Time in Timebase 5 to maneuver to local reference attitude
 	double T_L_apo;									// Predicted time of liftoff (in GMT) in seconds
 	double Lambda_0;								// Value of DescNodeAngle valid for a liftoff at launch window opening
 	double lambda_dot;								// Time rate of change of Lambda_0
 	double T_GRR0;									// Nominal value of T_GRR
+	double DT_N1, DT_N2, DT_N3, DT_N4, DT_N5, DT_N6;// Nominal DT for various mission phases
+	double T_SON;									// Time since last orbital navigation pass
 	
 	// PAD-LOADED TABLES
 	double Fx[5][5];								// Pre-IGM pitch polynomial
 	double Ax[4];									// Variable azimuth polynomial
 
 	// LVDC software variables, NOT PAD-LOADED
-	double Azimuth;									// Azimuth
 	double Inclination;								// Inclination
 	double DescNodeAngle;							// Descending Node Angle -- THETA_N
 	VECTOR3 CommandedAttitude;						// Commanded Attitude (RADIANS)
 	VECTOR3 PCommandedAttitude;						// Previous Commanded Attitude (RADIANS)
-	VECTOR3 ACommandedAttitude;						// Actual Commanded Attitude (RADIANS)
-	VECTOR3 CommandRateLimits;						// Command Rate Limits
 	VECTOR3 CurrentAttitude;						// Current Attitude   (RADIANS)
 	double F;										// Force in Newtons, I assume.	
 	double A1,A2,A3,A4,A5;
@@ -660,11 +665,11 @@ private:
 	double V_T;										// Desired terminal velocity
 	double V_i,V_0,V_1,V_2;							// Parameters for cutoff velocity computation
 	double gamma_T;									// Desired terminal flight-path angle
-	MATRIX3 MX_A;									// Transform matrix from earth-centered plumbline to equatorial
-	MATRIX3 MX_B;									// Transform matrix from equatorial to orbital coordinates
-	MATRIX3 MX_G;									// Transform matrix from earth-centered plumbline to orbital
-	MATRIX3 MX_K;									// Transform matrix from earth-centered plumbline to terminal
-	MATRIX3 MX_phi_T;								// Matrix made from phi_T
+	MATRIX3 MX_A;									// Transform matrix from earth-centered plumbline to equatorial (EDD name MSG)
+	MATRIX3 MX_B;									// Transform matrix from equatorial to orbital coordinates (EDD name MG4)
+	MATRIX3 MX_G;									// Transform matrix from earth-centered plumbline to orbital (EDD name MS4)
+	MATRIX3 MX_K;									// Transform matrix from earth-centered plumbline to terminal (EDD name MSV)
+	MATRIX3 MX_phi_T;								// Matrix made from phi_T (EDD name M4V)
 	double phi_T;									// Angle used to estimate location of terminal radius in orbital plane
 	VECTOR3 Pos4;									// Position in the orbital reference system
 	VECTOR3 PosS;									// Position in the earth-centered plumbline system.
@@ -682,6 +687,8 @@ private:
 	double S,P;										// intermediate variables for gravity calculation
 	double a;										// earth equatorial radius
 	double J;										// coefficient for second zonal gravity harmonic
+	double H;										// coefficient for third zonal gravity harmonic
+	double D;										// coefficient for fourth zonal gravity harmonic
 	double CG;
 	double alpha_D;									// Angle from perigee to DN vector
 	bool alpha_D_op;								// Option to determine alpha_D or load it
@@ -712,6 +719,7 @@ private:
 	double T_CO;									// Predicted time of S4B shutdown, from GRR
 	double dV;
 	double dV_B;									// Velocity cutoff bias for orbital insertion
+	double DT_B;									// Time bias to compensate for S-IVB engine thrust decay after cutoff
 	double TAS;										// Time from GRR
 	double t_clock;									// Time from liftoff
 	double X_Zi,X_Yi;								// Generated Pitch and Yaw Command
@@ -719,12 +727,89 @@ private:
 	double cos_chi_Yit;
 	double sin_chi_Zit;
 	double cos_chi_Zit;
+	double DT_N;									// Nominal value of DT
+	double MLR;										// Minor loop rate
+	double MS25DT;									// Number of minor loops per DT_N through minor loop support
+	double MS04DT;									// The reciprocal of MS25DT
+	double MSK5;									// Ladder rate limit (all channels)
+	double MSK6;									// Ladder magnitude limit (pitch and yaw channels)
+	double MSK16;									// Ladder magnitude limit (roll channel)
+	double MSLIM1;									// Attitude command (chi) rate limit (roll channel)
+	double MSLIM2;									// Attitude command (chi) rate limit (pitch and yaw channel)
+	VECTOR3 DChi;									// Computed change Chi_apo (CommandedAttitude) for present major loop
+	VECTOR3 DChi_apo;								// Computed Chi guidance command increment for minor loop
+	double Chi_xp_apo;								// Predicted value of Chi_x_apo at end of present major loop
+	double Chi_zp_apo;								// Predicted value of Chi_z_apo at end of present major loop
+	double theta_xa;								// Average value of theta_x during next major loop pass
+	double theta_za;								// Average value of theta_z during next major loop pass
+	VECTOR3 R_OG;									// Radius vector for use in orbital guidance
+	VECTOR3 RTEMP1, VTEMP1, ATEMP1, RPT, VPT, APT, DRT, DVT, ddotS;
+	double R4;
+	double NUPTIM;									// Time from GRR at which a DCS Navigation Update is to be implemented
+	VECTOR3 Pos_Nav, Vel_Nav;
+
+	//ORBITAL GUIDANCE PROGRAM
+	double SP_M[10];								// In-plane attitude parameters of orbital guidance maneuvers
+	double CP_M[10];
+	double SY_M[10];
+	double CY_M[10];
+	double RA_M[10];
+	int TYP_M[10];									// +1 = inertial reference, 0 = chi freeze, -1 = local reference, -2 = inertial hold of local reference
+	double t_Maneuver[10];							// Time of orbital attitude maneuver. Positive for TB4 referenced, negative for time since GRR
+	int OrbitManeuverCounter;
+	double SPITCH, CPITCH, SYAW, CYAW, ROLLA;
+	double Y_ref, Z_ref, X_ref;
+	//Parameter used by execute generalized maneuver, execute special maneuver, and return to nominal timeline
+	//DCS commands, indicating orbital maneuver type.
+	std::bitset<5> GOMTYP;
+	double T_SOM;
 
 	//Switch Selector Tables
 	std::vector<SwitchSelectorSet> SSTTB[5];	// [1...4] 0 never used!
 	std::vector<SwitchSelectorSet> SSTALT1;
 
 	// TABLE25 is apparently only used on direct-ascent
+
+	//Mode Code Bits
+	enum ModeCode25_Bits
+	{
+		MC25_TLC_Memory_Error = 0,
+		MC25_TB4Begin,
+		MC25_SIVBCutoff1Issued,
+		MC25_TerminalGuidance,
+		MC25_SIVBEngineStartOnIssued = 5,
+		MC25_ManualSIVBCutoffInitiation = 7,
+		MC25_SIVBIGMAfterEMRC = 12,
+		MC25_SIVBIGMBeforeEMRC,
+		MC25_SMCActive = 15,
+		MC25_SIBOutboardEngineOut,
+		MC25_SIBInboardEngineOut,
+		MC25_BeginTB3,
+		MC25_BeginTB2,
+		MC25_SIBTimeTiltPitchFreeze,
+		MC25_RollManeuverComplete = 22,
+		MC25_InitiateSIBPitchRollGuidance,
+		MC25_BeginTB1,
+		MC25_BeginTB0
+	};
+
+	enum ModeCode27_Bits
+	{
+		MC27_DCSSpecialManeuverAImplemented = 4,
+		MC27_DCSSpecialManeuverBImplemented,
+		MC27_DCSExecuteGeneralizedManeuverAccepted,
+		MC27_DCSWaterControlValeLogicInhibitAccepted,
+		MC27_InertialAttHoldManeuverAfterSCControl,
+		MC27_TrackLocalReferenceAfterSCControl,
+		MC27_SCControlAfterGRF,
+		MC27_GRFDiscretesSet,
+		MC27_SCInControl = 13,
+		MC27_InertialAttHoldInProgress,
+		MC27_LocalReferenceManeuverInProgress,
+		MC27_DCSTimeBaseUpdateAccepted,
+		MC27_DCSNavigationUpdateAccepted,
+		MC27_DCSPoweredFlightInhibitRemoved = 25
+	};
 };
 
 #define LVDC_START_STRING "LVDC_BEGIN"

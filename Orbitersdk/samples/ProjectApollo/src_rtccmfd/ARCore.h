@@ -102,6 +102,8 @@ public:
 	void MPTTLIDirectInput();
 	void TransferLOIorMCCtoMPT();
 	void TransferRTEToMPT();
+	void SLVNavigationUpdateCalc();
+	void SLVNavigationUpdateUplink();
 	bool vesselinLOS();
 	void MinorCycle(double SimT, double SimDT, double mjd);
 
@@ -128,7 +130,6 @@ public:
 	void NavCheckPAD();
 	void AP11AbortCoefUplink();
 	void AP12AbortCoefUplink();
-	int REFSMMATOctalAddress();
 	void DetermineGMPCode();
 	void NodeConvCalc();
 	void SendNodeToSFP();

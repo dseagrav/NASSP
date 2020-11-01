@@ -1596,7 +1596,7 @@ void PCM::Init(Saturn *vessel){
 	mcc_size = 0; mcc_offset = 0;
 	wsk_error = 0;
 	last_update = 0;
-	last_rx = 0;
+	last_rx = MINUS_INFINITY;
 	word_addr = 0;
 	pcm_rate_override = 0;
 	int iResult = WSAStartup( MAKEWORD(2,2), &wsaData );
@@ -5101,4 +5101,328 @@ void DSE::SaveState(FILEHANDLE scn) {
 
 	sprintf(buffer, "%lf %lf %lf %i %lf", tapeSpeedInchesPerSecond, desiredTapeSpeed, tapeMotion, state, lastEventTime); 
 	oapiWriteScenario_string(scn, "DATARECORDER", buffer);
+}
+
+// Rendezvous Radar Transponder System
+// there is a connector, CSM_RRTto_LM_RRConnector, which is a member of the saturn class, that is recieving the radar RF properties from the LEM which is doing the sending.
+
+RNDZXPDRSystem::RNDZXPDRSystem()
+{
+	sat = NULL;
+	lem = NULL;
+	TestOperateSwitch = NULL;
+	HeaterPowerSwitch = NULL;
+	RRT_LeftSystemTestRotarySwitch = NULL;
+	RRT_RightSystemTestRotarySwitch = NULL;
+	RRT_FLTBusCB = NULL;
+}
+
+RNDZXPDRSystem::~RNDZXPDRSystem()
+{
+	sat->CSM_RRTto_LM_RRConnector.Disconnect();
+}
+
+void RNDZXPDRSystem::Init(Saturn *vessel, CircuitBrakerSwitch *PowerCB, ToggleSwitch *RNDZXPDRSwitch, ThreePosSwitch *Panel100RNDZXPDRSwitch, RotationalSwitch *LeftSystemTestRotarySwitch, RotationalSwitch *RightSystemTestRotarySwitch)
+{
+	sat = vessel;
+	if (!lem){
+		VESSEL *lm = sat->agc.GetLM();
+		if (lm) {
+			lem = (static_cast<LEM*>(lm));
+		}
+	}
+
+	TestOperateSwitch = RNDZXPDRSwitch;
+	HeaterPowerSwitch = Panel100RNDZXPDRSwitch;
+	RRT_LeftSystemTestRotarySwitch = LeftSystemTestRotarySwitch;
+	RRT_RightSystemTestRotarySwitch = LeftSystemTestRotarySwitch;
+	RRT_FLTBusCB = PowerCB;
+
+	RCVDfreq = 0.0;
+	RCVDpow = 0.0;
+	RCVDgain = 0.0;
+	RCVDPhase = 0.0;
+
+	XPDRon = false;
+	XPDRheaterOn = false;
+
+	RadarDist = 0.0;
+
+	RCVDPowerdB = 0.0;
+	XMITpower = 0.240; //watts
+
+	if (!(sat->CSM_RRTto_LM_RRConnector.connectedTo))
+	{
+		sat->CSM_RRTto_LM_RRConnector.ConnectTo(GetVesselConnector(lem, VIRTUAL_CONNECTOR_PORT, RADAR_RF_SIGNAL));
+	}
+
+	if(lem){ RNDZXPDRSystem::SendRF(); } //send inital info to the connector
+}
+
+unsigned char RNDZXPDRSystem::GetScaledRFPower()
+{
+	const double min_value = -122.0;
+	const double max_value = -18.0;
+	
+	if(XPDRon && (haslock == LOCKED))
+	{ 
+		return static_cast<unsigned char>(((RCVDPowerdB - min_value) / (max_value - min_value) * 148) + 107); //2.1 to 5.0V, scalled to 0x00 to 0xFF range
+	}
+	else
+	{
+		return NULL;
+	}	
+}
+
+unsigned char RNDZXPDRSystem::GetScaledAGCPower()
+{
+	const double min_value = 18.0;
+	const double max_value = 122.0;
+
+	if (XPDRon && (haslock == LOCKED))
+	{
+		return static_cast<unsigned char>((abs(RCVDPowerdB)-min_value)/(max_value - min_value)*229); //0.0 to 4.5V, scalled to 0x00 to 0xFF range
+	}
+	else
+	{
+		return NULL;
+	}
+}
+
+unsigned char RNDZXPDRSystem::GetScaledFreqLock()
+{
+	if (XPDRon && (haslock == LOCKED))
+	{
+		return static_cast<unsigned char>((lockTimer/1.3)*229); //0.0 to 4.5V, scalled to 0x00 to 0xFF range
+	}
+	else if (XPDRon && (haslock == UNLOCKED))
+	{
+		return static_cast<unsigned char>(20.0); //Signal Search Mode.
+	}
+	else
+	{
+		return NULL;
+	}
+}
+
+double RNDZXPDRSystem::GetCSMGain(double theta, double phi)
+{
+
+	//values from AOH LM volume 2
+
+	const double gainMin = -32.0;
+	const double gainMax = 6.0;
+
+	const double ThetaXPDR = 85.0*RAD; //15 deg forward
+	const double PhiXPDR = 141.8*RAD; //
+
+	double gain;
+
+	double AngleMap = sqrt(((theta - ThetaXPDR)*(theta - ThetaXPDR)) + ((phi - PhiXPDR)*(phi - PhiXPDR))); 
+	
+	gain = cos(AngleMap/2*RAD)*cos(AngleMap / 2 * RAD); //close enough
+
+	gain = gain * (gainMax - gainMin) + gainMin;
+
+
+
+
+	return gain;
+}
+
+void RNDZXPDRSystem::SendRF()
+{
+	if (XPDRon && (haslock == LOCKED))//act like a transponder
+	{
+		sat->CSM_RRTto_LM_RRConnector.SendRF(RCVDfreq*(240.0 / 241.0), XMITpower, RNDZXPDRGain, 0.0);
+	}
+	else //act like a radar reflector, this is also a function of orientation and skin temperature of the CSM, but this should work.
+	{
+		sat->CSM_RRTto_LM_RRConnector.SendRF(RCVDfreq, (pow(10.0, RCVDPowerdB / 10.0) / 1000)*0.85*((sin(theta*RAD) + 1) / 2), 12.0, 0.0); //should give a radar cross section of ~5m^2 side on, ~=5kM range
+	}
+}
+
+void RNDZXPDRSystem::TimeStep(double simdt)
+{
+	//this block of code checks to see if the LEM has somehow been deleted mid sceneriao, and sets the lem pointer to null
+	bool isLem = false;
+
+	for (unsigned int i = 0; i < oapiGetVesselCount(); i++)
+	{
+		OBJHANDLE hVessel = oapiGetVesselByIndex(i);
+		VESSEL* pVessel = oapiGetVesselInterface(hVessel);
+		if (!_strnicmp(pVessel->GetClassName(), "ProjectApollo/LEM", 17))
+		{
+			isLem = true;
+		}
+	}
+
+	if (!isLem)
+	{
+		lem = NULL;
+		haslock = UNLOCKED;
+		sat->CSM_RRTto_LM_RRConnector.Disconnect();
+	}
+	//
+
+	//get a pointer to the lem
+	if (!lem){
+		VESSEL *lm = sat->agc.GetLM();
+		if (lm) {
+			lem = (static_cast<LEM*>(lm));
+		}
+	}
+
+	///
+	/// TODO: make heater heat, should be on for 15min before switching RRT on.
+	///
+
+	//make sure the power's on to the heater and the transponder
+	if (RRT_FLTBusCB->Voltage() > 25.0) //spec minimum for the RRT system
+	{
+		if ((HeaterPowerSwitch->GetState() == THREEPOSSWITCH_CENTER))
+		{
+		XPDRon = false;
+		XPDRheaterOn = false;
+		XPDRtest = false;
+		}
+		else if ((HeaterPowerSwitch->GetState() == THREEPOSSWITCH_UP) && (TestOperateSwitch->GetState() == TOGGLESWITCH_DOWN)) 
+		{
+			XPDRon = true;
+			XPDRheaterOn = true;
+			XPDRtest = false;
+		}
+		else if ((HeaterPowerSwitch->GetState() == THREEPOSSWITCH_UP) && (TestOperateSwitch->GetState() == TOGGLESWITCH_UP))
+		{
+			XPDRon = false;
+			XPDRheaterOn = true;
+			XPDRtest = true;
+		}
+		else if (HeaterPowerSwitch->GetState() == THREEPOSSWITCH_DOWN)
+		{
+			XPDRon = false;
+			XPDRheaterOn = true;
+			XPDRtest = false;
+		}
+	}
+	else
+	{
+		XPDRon = false;
+		XPDRheaterOn = false;
+		XPDRtest = false;
+	}
+
+	if (!XPDRon)
+	{
+		haslock = UNLOCKED;
+		lockTimer = 0.0;
+	}
+
+	//sprintf(oapiDebugString(), "RRT_FLTBusCB Current = %lf A; Voltage = %lf V", RRT_FLTBusCB->Current(), RRT_FLTBusCB->Voltage());
+
+	if (lem) //do transpondery things
+	{
+		if (!(sat->CSM_RRTto_LM_RRConnector.connectedTo))
+		{
+			sat->CSM_RRTto_LM_RRConnector.ConnectTo(GetVesselConnector(lem, VIRTUAL_CONNECTOR_PORT, RADAR_RF_SIGNAL));
+		}
+
+		//sprintf(oapiDebugString(),"Frequency Received: %lf MHz", RCVDfreq);
+		//sprintf(oapiDebugString(), "LEM RR Gain Received: %lf", RCVDgain);
+
+		sat->GetGlobalPos(csmPos);
+		sat->GetRotationMatrix(CSMRot);
+		lem->GetGlobalPos(lemPos);
+
+		R = csmPos - lemPos;
+		U_R = unit(R);
+
+		U_R_RR = unit(tmul(CSMRot, -U_R)); // calculate the pointing vector from the CSM to the LM in the CSM's local frame
+		U_R_RR = _V(U_R_RR.z, U_R_RR.x, -U_R_RR.y); //swap out Orbiter's axes for the Apollo CSM's
+
+		theta = acos(U_R_RR.x); //calculate the azmuth about the csm local frame
+		phi = atan2(U_R_RR.y, -U_R_RR.z); //calculate the elevation about the csm local frame
+
+		if (phi < 0)
+		{
+			phi += RAD * 360;
+		}
+		//sprintf(oapiDebugString(), "Theta: %lf, Phi: %lf", theta*DEG, phi*DEG);
+
+		RadarDist = length(R);
+		//sprintf(oapiDebugString(), "LEM-CSM Distance: %lfm", RadarDist);
+
+		RNDZXPDRGain = RNDZXPDRSystem::GetCSMGain(theta, phi);
+		//sprintf(oapiDebugString(), "RNDZXPDRGain = %lf dBi", RNDZXPDRGain);
+
+		RNDZXPDRGain = pow(10, (RNDZXPDRGain / 10)); //convert to ratio from dB
+
+		if (RadarDist > 80.0*0.3048)
+		{
+			RCVDPowerdB = RCVDgain * RNDZXPDRGain * RCVDpow*pow((C0 / (RCVDfreq * 1000000)) / (4 * PI*RadarDist), 2); //watts
+			RCVDPowerdB = 10.0 * log10(1000.0 * RCVDPowerdB); //convert to dBm
+		}
+		else
+		{
+			RCVDPowerdB = -130; //technicially dB should decrease linearly with decreasing log(distance) as we enter the Rayleigh Region, but this works maybe simulate this better later
+		}
+
+		if ((RCVDPowerdB > -122.0) && XPDRon)
+		{
+			if (lockTimer < 1.3)
+			{
+				lockTimer += simdt;
+			}
+			else
+			{
+				haslock = LOCKED;
+			}
+		}
+		else
+		{
+			haslock = UNLOCKED;
+			lockTimer = 0.0;
+		}
+
+		//sprintf(oapiDebugString(), "Power Receved: %lfdB ,Lock Timer: %lfsec", RCVDPowerdB, lockTimer);
+
+		RNDZXPDRSystem::SendRF();
+	}
+}
+
+void RNDZXPDRSystem::SystemTimestep(double simdt)
+{
+	double XPDRpowerDraw = 70.5; //watts
+	double heater = 14.0; //watts
+
+	if (RRT_FLTBusCB->Voltage() > 25.0) //spec minimum for the RRT system
+	{
+		if (HeaterPowerSwitch->GetState() == THREEPOSSWITCH_UP)
+		{
+			RRT_FLTBusCB->DrawPower(XPDRpowerDraw + heater);
+		}
+		else if (HeaterPowerSwitch->GetState() == THREEPOSSWITCH_DOWN)
+		{
+			RRT_FLTBusCB->DrawPower(heater);
+		}
+
+		//if (haslock == LOCKED)
+		//{
+			//send voltages to proper gauges.
+		//}
+	}
+}
+
+void RNDZXPDRSystem::LoadState(char *line)
+{
+	sscanf(line + 14, "%i %lf", &haslock, &lockTimer);
+}
+
+void RNDZXPDRSystem::SaveState(FILEHANDLE scn)
+{
+	char buffer[256];
+
+	sprintf(buffer, "%i %lf", haslock, lockTimer);
+
+	oapiWriteScenario_string(scn, "RNDZXPDRSystem", buffer);
 }

@@ -1296,6 +1296,19 @@ double SaturnSystemTestAttenuator::GetValue()
 			break;
 		}
 		break;
+	case 8:
+		switch (right)
+		{
+		case 0:	
+			val = Sat->RRTsystem.GetScaledRFPower();
+			break;
+		case 1:	
+			val = Sat->RRTsystem.GetScaledAGCPower();
+			break;
+		case 2:	
+			val = Sat->RRTsystem.GetScaledFreqLock();
+			break;
+		}
 	}
 
 	return (double)val;

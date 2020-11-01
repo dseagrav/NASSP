@@ -398,8 +398,6 @@ protected:
 	bool IsLogicPoweredAndArmedB();
 	
 	int State;
-	double NextMissionEventTime;
-	double LastMissionEventTime;
 
 	Saturn *Sat;
 };
@@ -537,8 +535,6 @@ protected:
 	double NewFloatBagSize(double size, ThreePosSwitch *sw, CircuitBrakerSwitch *cb, double simdt);
 
 	int State;
-	double NextMissionEventTime;
-	double LastMissionEventTime;
 
 	double FloatBag1Size;
 	double FloatBag2Size;

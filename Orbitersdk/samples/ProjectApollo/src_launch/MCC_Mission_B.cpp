@@ -25,8 +25,8 @@ See http://nassp.sourceforge.net/license/ for more details.
 #include "Orbitersdk.h"
 #include "soundlib.h"
 #include "saturn.h"
+#include "sivb.h"
 #include "LEM.h"
-#include "LEMSaturn.h"
 #include "mcc.h"
 #include "MCC_Mission_B.h"
 #include "iu.h"
@@ -40,7 +40,7 @@ void MCC::MissionSequence_B()
 		case 0:
 			if (lm->GetMissionTime() > -5.0)
 			{
-				LEMSaturn *lmsat = (LEMSaturn *)lm;
+				SIVB *lmsat = (SIVB *)sivb;
 				lmsat->GetIU()->GetEDS()->EnableCommandSystem();
 				setSubState(1);
 			}

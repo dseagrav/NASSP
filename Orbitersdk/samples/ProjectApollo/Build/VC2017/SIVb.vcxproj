@@ -79,7 +79,7 @@
       <Culture>0x040c</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>PanelSDK.lib;orbiter.lib;orbitersdk.lib;opengl32.lib;glu32.lib;OrbiterSoundSDK40.lib;User32.lib;Gdi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>PanelSDK.lib;orbiter.lib;orbitersdk.lib;opengl32.lib;glu32.lib;User32.lib;Gdi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>../../../../../Modules/ProjectApollo/SIVb.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>;../../../../lib/Lua;.\Debug\PanelSDK;../../../../lib;../../../../../Sound/OrbiterSound_SDK/VESSELSOUND_SDK/ShuttlePB_project;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -127,7 +127,7 @@
       <Culture>0x040c</Culture>
     </ResourceCompile>
     <Link>
-      <AdditionalDependencies>PanelSDK.lib;orbiter.lib;orbitersdk.lib;opengl32.lib;glu32.lib;lua5.1.lib;OrbiterSoundSDK40.lib;User32.lib;Gdi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>PanelSDK.lib;orbiter.lib;orbitersdk.lib;opengl32.lib;glu32.lib;lua5.1.lib;User32.lib;Gdi32.lib;%(AdditionalDependencies)</AdditionalDependencies>
       <OutputFile>../../../../../Modules/ProjectApollo/SIVb.dll</OutputFile>
       <SuppressStartupBanner>true</SuppressStartupBanner>
       <AdditionalLibraryDirectories>.\Release\PanelSDK;../../../../lib;../../../../../Sound/OrbiterSound_SDK/VESSELSOUND_SDK/ShuttlePB_project;../../../../lib/Lua;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
@@ -166,6 +166,7 @@
       <AdditionalIncludeDirectories Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
       <PreprocessorDefinitions Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
+    <ClCompile Include="..\..\src_sys\pyro.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src_rtccmfd\OrbMech.h" />
@@ -184,6 +185,7 @@
     <ClInclude Include="..\..\src_sys\DelayTimer.h" />
     <ClInclude Include="..\..\src_sys\powersource.h" />
     <ClInclude Include="..\..\src_saturn\sivb.h" />
+    <ClInclude Include="..\..\src_sys\pyro.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="PanelSDK.vcxproj">

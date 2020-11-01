@@ -34,6 +34,7 @@ See http://nassp.sourceforge.net/license/ for more details.
 #define DCSUPLINK_EXECUTE_COMM_MANEUVER		7
 #define DCSUPLINK_SIVBIU_LUNAR_IMPACT		8
 #define DCSUPLINK_SATURNIB_LAUNCH_TARGETING	9
+#define DCSUPLINK_SLV_NAVIGATION_UPDATE 	10
 
 #define DCS_START_STRING	"DCS_BEGIN"
 #define DCS_END_STRING		"DCS_END"
@@ -70,6 +71,14 @@ struct DCSLAUNCHTARGET
 	double lambda_0;
 	double lambda_dot;
 	double T_GRR0;
+};
+
+//SLV Navigation Update
+struct DCSSLVNAVUPDATE
+{
+	double NUPTIM = 0.0;
+	VECTOR3 PosS = _V(0, 0, 0);
+	VECTOR3 DotS = _V(0, 0, 0);
 };
 
 class IU;

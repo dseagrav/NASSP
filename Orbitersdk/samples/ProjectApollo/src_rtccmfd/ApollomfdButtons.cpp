@@ -1605,7 +1605,7 @@ ApolloRTCCMFDButtons::ApolloRTCCMFDButtons()
 		{ "External DV Update", 0, 'E' },
 		{ "Retrofire EXDV Update", 0, 'R' },
 		{ "REFSMMAT Update", 0, 'H' },
-		{ "", 0, ' ' },
+		{ "SLV Navigation Update", 0, 'S' },
 
 		{ "", 0, ' ' },
 		{ "", 0, ' ' },
@@ -1622,12 +1622,12 @@ ApolloRTCCMFDButtons::ApolloRTCCMFDButtons()
 	RegisterFunction("P30", OAPI_KEY_E, &ApolloRTCCMFD::menuSetP30UplinkPage);
 	RegisterFunction("RET", OAPI_KEY_R, &ApolloRTCCMFD::menuSetRetrofireEXDVUplinkPage);
 	RegisterFunction("REF", OAPI_KEY_H, &ApolloRTCCMFD::menuSetREFSMMATUplinkPage);
-	RegisterFunction("", OAPI_KEY_Q, &ApolloRTCCMFD::menuVoid);
+	RegisterFunction("SLV", OAPI_KEY_S, &ApolloRTCCMFD::menuSetSLVNavigationUpdatePage);
 
 	RegisterFunction("", OAPI_KEY_D, &ApolloRTCCMFD::menuVoid);
 	RegisterFunction("", OAPI_KEY_C, &ApolloRTCCMFD::menuVoid);
 	RegisterFunction("", OAPI_KEY_P, &ApolloRTCCMFD::menuVoid);
-	RegisterFunction("", OAPI_KEY_S, &ApolloRTCCMFD::menuVoid);
+	RegisterFunction("", OAPI_KEY_Q, &ApolloRTCCMFD::menuVoid);
 	RegisterFunction("", OAPI_KEY_V, &ApolloRTCCMFD::menuVoid);
 	RegisterFunction("BCK", OAPI_KEY_B, &ApolloRTCCMFD::menuSetMenu);
 
@@ -3114,7 +3114,7 @@ ApolloRTCCMFDButtons::ApolloRTCCMFDButtons()
 	RegisterPage(mnu91, sizeof(mnu91) / sizeof(MFDBUTTONMENU));
 
 	RegisterFunction("TTH", OAPI_KEY_H, &ApolloRTCCMFD::menuLLTPThresholdTime);
-	RegisterFunction("TV", OAPI_KEY_V, &ApolloRTCCMFD::menuVoid);
+	RegisterFunction("VTI", OAPI_KEY_V, &ApolloRTCCMFD::menuLLTPVectorTime);
 	RegisterFunction("RDO", OAPI_KEY_R, &ApolloRTCCMFD::menuLunarLiftoffVVertInput);
 	RegisterFunction("DT", OAPI_KEY_D, &ApolloRTCCMFD::menuSetLiftoffDT);
 	RegisterFunction("", OAPI_KEY_H, &ApolloRTCCMFD::menuVoid);
@@ -3262,6 +3262,40 @@ ApolloRTCCMFDButtons::ApolloRTCCMFDButtons()
 	RegisterFunction("UNI", OAPI_KEY_S, &ApolloRTCCMFD::menuGOSTShowStarVector);
 	RegisterFunction("LMK", OAPI_KEY_U, &ApolloRTCCMFD::menuGOSTShowLandmarkVector);
 	RegisterFunction("BCK", OAPI_KEY_B, &ApolloRTCCMFD::menuSetMCCDisplaysPage);
+
+
+	static const MFDBUTTONMENU mnu96[] =
+	{
+		{ "", 0, ' ' },
+		{ "", 0, ' ' },
+		{ "", 0, ' ' },
+		{ "", 0, ' ' },
+		{ "", 0, ' ' },
+		{ "", 0, ' ' },
+
+		{ "", 0, ' ' },
+		{ "", 0, ' ' },
+		{ "", 0, ' ' },
+		{ "", 0, ' ' },
+		{ "", 0, ' ' },
+		{ "Back to menu", 0, 'B' },
+	};
+
+	RegisterPage(mnu96, sizeof(mnu96) / sizeof(MFDBUTTONMENU));
+
+	RegisterFunction("TIM", OAPI_KEY_G, &ApolloRTCCMFD::menuSetSVTime);
+	RegisterFunction("", OAPI_KEY_Q, &ApolloRTCCMFD::menuVoid);
+	RegisterFunction("", OAPI_KEY_V, &ApolloRTCCMFD::menuVoid);
+	RegisterFunction("", OAPI_KEY_L, &ApolloRTCCMFD::menuVoid);
+	RegisterFunction("", OAPI_KEY_H, &ApolloRTCCMFD::menuVoid);
+	RegisterFunction("", OAPI_KEY_Q, &ApolloRTCCMFD::menuVoid);
+
+	RegisterFunction("TGT", OAPI_KEY_T, &ApolloRTCCMFD::set_svtarget);
+	RegisterFunction("CLC", OAPI_KEY_A, &ApolloRTCCMFD::menuSLVNavigationUpdateCalc);
+	RegisterFunction("UPL", OAPI_KEY_G, &ApolloRTCCMFD::menuSLVNavigationUpdateUplink);
+	RegisterFunction("", OAPI_KEY_S, &ApolloRTCCMFD::menuVoid);
+	RegisterFunction("", OAPI_KEY_E, &ApolloRTCCMFD::menuVoid);
+	RegisterFunction("BCK", OAPI_KEY_B, &ApolloRTCCMFD::menuSetUplinkMenu);
 }
 
 bool ApolloRTCCMFDButtons::SearchForKeysInOtherPages() const

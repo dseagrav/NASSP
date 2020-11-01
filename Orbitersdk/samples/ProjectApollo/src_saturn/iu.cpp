@@ -48,6 +48,7 @@ ControlSignalProcessor(this)
 {
 	State = 0;
 	MissionTime = 0.0;
+	LastCycled = 0.0;
 
 	Crewed = true;
 	SCControlPoweredFlight = false;
@@ -93,6 +94,25 @@ void IU::Timestep(double misst, double simt, double simdt, double mjd)
 	if (GetControlDistributor()->GetGSECommandVehicleLiftoffIndicationInhibit() == false)
 	{
 		GetEngineCutoffEnableTimer()->SetRunning(true);
+	}
+}
+
+void IU::LVDCTimestep(double simt, double simdt)
+{
+	//GetLVDC()->TimeStep(simdt);
+
+	if (LastCycled == 0) {					// Use simdt as difference if new run
+		LastCycled = (simt - simdt);
+	}
+	double ThisTime = LastCycled;			// Save here
+
+	long cycles = (long)((simt - LastCycled) / LVDC_TIMESTEP);	// Get number of CPU cycles to do
+	LastCycled += (LVDC_TIMESTEP * cycles);						// Preserve the remainder
+	long x = 0;
+	while (x < cycles) {
+		GetLVDC()->TimeStep(LVDC_TIMESTEP);
+		ThisTime += LVDC_TIMESTEP;								// Add time
+		x++;
 	}
 }
 
@@ -197,6 +217,52 @@ bool IU::GetSIVBEngineOut()
 	}
 
 	return false;
+}
+
+VECTOR3 IU::GetTheodoliteAlignment(double azimuth)
+{
+	MATRIX3 R, R_left, Rot;
+	VECTOR3 pos, X_SM, Y_SM, Z_SM, X_NB, U_Z, E, S, Z_NB, Y_NB;
+
+	lvCommandConnector.GetRotationMatrix(R_left);
+	R = _M(R_left.m11, R_left.m13, R_left.m12, R_left.m31, R_left.m33, R_left.m32, R_left.m21, R_left.m23, R_left.m22);
+	X_NB = _V(R.m12, R.m22, R.m32);
+	Z_NB = _V(R.m13, R.m23, R.m33);
+	Y_NB = -_V(R.m11, R.m21, R.m31);
+	lvCommandConnector.GetRelativePos(oapiGetObjectByName("Earth"), pos);
+	X_SM = unit(_V(pos.x, pos.z, pos.y));
+	//Get polar axis
+	oapiGetRotationMatrix(oapiGetObjectByName("Earth"), &Rot);
+	U_Z =_V(Rot.m12, Rot.m32, Rot.m22);
+
+	E = unit(crossp(-X_SM, U_Z));
+	S = unit(crossp(E, -X_SM));
+	Z_SM = E * sin(azimuth) + S * cos(azimuth);
+	Y_SM = crossp(Z_SM, X_SM);
+
+	VECTOR3 a_MG = unit(crossp(X_NB, Y_SM));
+	double cos_OGA = dotp(a_MG, Z_NB);
+	double sin_OGA = dotp(a_MG, Y_NB);
+	double OGA = atan2(sin_OGA, cos_OGA);
+	if (OGA < 0)
+	{
+		OGA += PI2;
+	}
+	double cos_MGA = dotp(Y_SM, crossp(a_MG, X_NB));
+	double sin_MGA = dotp(Y_SM, X_NB);
+	double MGA = atan2(sin_MGA, cos_MGA);
+	if (MGA < 0)
+	{
+		MGA += PI2;
+	}
+	double cos_IGA = dotp(a_MG, Z_SM);
+	double sin_IGA = dotp(a_MG, X_SM);
+	double IGA = atan2(sin_IGA, cos_IGA);
+	if (IGA < 0)
+	{
+		IGA += PI2;
+	}
+	return _V(OGA, IGA, MGA);
 }
 
 bool IU::DCSUplink(int type, void *upl)
@@ -905,17 +971,6 @@ void IUToLVCommandConnector::SetSIVBThrusterDir(double yaw, double pitch)
 	SendMessage(cm);
 }
 
-void IUToLVCommandConnector::SwitchSelector(int item)
-{
-	ConnectorMessage cm;
-
-	cm.destination = LV_IU_COMMAND;
-	cm.messageType = IULV_SWITCH_SELECTOR;
-	cm.val1.iValue = item;
-
-	SendMessage(cm);
-}
-
 void IUToLVCommandConnector::SISwitchSelector(int channel)
 {
 	ConnectorMessage cm;
@@ -1145,12 +1200,12 @@ double IUToLVCommandConnector::GetMissionTime()
 	return 0.0;
 }
 
-int IUToLVCommandConnector::GetApolloNo()
+int IUToLVCommandConnector::GetVehicleNo()
 {
 	ConnectorMessage cm;
 
 	cm.destination = LV_IU_COMMAND;
-	cm.messageType = IULV_GET_APOLLONO;
+	cm.messageType = IULV_GET_VEHICLENO;
 
 	if (SendMessage(cm))
 	{
@@ -1160,13 +1215,14 @@ int IUToLVCommandConnector::GetApolloNo()
 	return 0;
 }
 
-void IUToLVCommandConnector::GetSIThrustOK(bool *ok)
+void IUToLVCommandConnector::GetSIThrustOK(bool *ok, int n)
 {
 	ConnectorMessage cm;
 
 	cm.destination = LV_IU_COMMAND;
 	cm.messageType = IULV_GET_SI_THRUST_OK;
 	cm.val1.pValue = ok;
+	cm.val2.iValue = n;
 
 	(SendMessage(cm));
 }
@@ -1382,7 +1438,7 @@ void IU1B::Timestep(double misst, double simt, double simdt, double mjd)
 	ControlDistributor.Timestep(simdt);
 	ControlSignalProcessor.Timestep();
 	eds.Timestep(simdt);
-	lvdc.TimeStep(simdt);
+	LVDCTimestep(simt, simdt);
 	fcc.Timestep(simdt);
 }
 
@@ -1525,7 +1581,7 @@ void IUSV::Timestep(double misst, double simt, double simdt, double mjd)
 	ControlDistributor.Timestep(simdt);
 	ControlSignalProcessor.Timestep();
 	eds.Timestep(simdt);
-	lvdc.TimeStep(simdt);
+	LVDCTimestep(simt, simdt);
 	fcc.Timestep(simdt);
 }
 

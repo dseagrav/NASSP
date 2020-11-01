@@ -252,6 +252,8 @@ void ApolloRTCCMFD::WriteStatus(FILEHANDLE scn) const
 	papiWriteScenario_double(scn, "SFP_RAD_LLS", GC->rtcc->PZSFPTAB.blocks[1].rad_lls);
 	papiWriteScenario_double(scn, "SFP_T_LO", GC->rtcc->PZSFPTAB.blocks[1].T_lo);
 	papiWriteScenario_double(scn, "SFP_T_TE", GC->rtcc->PZSFPTAB.blocks[1].T_te);
+	papiWriteScenario_double(scn, "LOI_eta_1", GC->rtcc->med_k40.eta_1);
+	papiWriteScenario_double(scn, "LOI_REVS1", GC->rtcc->med_k40.REVS1);
 	papiWriteScenario_vec(scn, "TLCCDV", G->TLCC_dV_LVLH);
 	papiWriteScenario_double(scn, "TLCCTIG", G->TLCC_TIG);
 	papiWriteScenario_vec(scn, "R_TLI", G->R_TLI);
@@ -284,6 +286,8 @@ void ApolloRTCCMFD::WriteStatus(FILEHANDLE scn) const
 	papiWriteScenario_double(scn, "t_Liftoff_guess", G->t_LunarLiftoff);
 	papiWriteScenario_double(scn, "t_TPIguess", G->t_TPIguess);
 	papiWriteScenario_double(scn, "DT_Ins_TPI", GC->rtcc->PZLTRT.DT_Ins_TPI);
+	papiWriteScenario_double(scn, "LTPoweredFlightArc", GC->rtcc->PZLTRT.PoweredFlightArc);
+	papiWriteScenario_double(scn, "LTPoweredFlightTime", GC->rtcc->PZLTRT.PoweredFlightTime);
 	oapiWriteScenario_int(scn, "DKI_Profile", G->DKI_Profile);
 	oapiWriteScenario_int(scn, "DKI_TPI_Mode", G->DKI_TPI_Mode);
 	papiWriteScenario_bool(scn, "DKI_Maneuver_Line", G->DKI_Maneuver_Line);
@@ -469,6 +473,8 @@ void ApolloRTCCMFD::ReadStatus(FILEHANDLE scn)
 		papiReadScenario_double(line, "SFP_RAD_LLS", GC->rtcc->PZSFPTAB.blocks[1].rad_lls);
 		papiReadScenario_double(line, "SFP_T_LO", GC->rtcc->PZSFPTAB.blocks[1].T_lo);
 		papiReadScenario_double(line, "SFP_T_TE", GC->rtcc->PZSFPTAB.blocks[1].T_te);
+		papiReadScenario_double(line, "LOI_eta_1", GC->rtcc->med_k40.eta_1);
+		papiReadScenario_double(line, "LOI_REVS1", GC->rtcc->med_k40.REVS1);
 		papiReadScenario_vec(line, "TLCCDV", G->TLCC_dV_LVLH);
 		papiReadScenario_double(line, "TLCCTIG", G->TLCC_TIG);
 		papiReadScenario_vec(line, "R_TLI", G->R_TLI);
@@ -501,6 +507,8 @@ void ApolloRTCCMFD::ReadStatus(FILEHANDLE scn)
 		papiReadScenario_double(line, "t_Liftoff_guess", G->t_LunarLiftoff);
 		papiReadScenario_double(line, "t_TPIguess", G->t_TPIguess);
 		papiReadScenario_double(line, "DT_Ins_TPI", GC->rtcc->PZLTRT.DT_Ins_TPI);
+		papiReadScenario_double(line, "LTPoweredFlightArc", GC->rtcc->PZLTRT.PoweredFlightArc);
+		papiReadScenario_double(line, "LTPoweredFlightTime", GC->rtcc->PZLTRT.PoweredFlightTime);
 		papiReadScenario_int(line, "DKI_Profile", G->DKI_Profile);
 		papiReadScenario_int(line, "DKI_TPI_Mode", G->DKI_TPI_Mode);
 		papiReadScenario_bool(line, "DKI_Maneuver_Line", G->DKI_Maneuver_Line);
@@ -1480,6 +1488,12 @@ void ApolloRTCCMFD::menuSetVectorCompareDisplay()
 void ApolloRTCCMFD::menuSetGuidanceOpticsSupportTablePage()
 {
 	screen = 95;
+	coreButtons.SelectPage(this, screen);
+}
+
+void ApolloRTCCMFD::menuSetSLVNavigationUpdatePage()
+{
+	screen = 96;
 	coreButtons.SelectPage(this, screen);
 }
 
@@ -4570,9 +4584,7 @@ void ApolloRTCCMFD::menuChangeVesselType()
 		G->g_Data.uplinkLEM = 1;
 
 		if (!stricmp(G->vessel->GetClassName(), "ProjectApollo\\LEM") ||
-			!stricmp(G->vessel->GetClassName(), "ProjectApollo/LEM") ||
-			!stricmp(G->vessel->GetClassName(), "ProjectApollo\\LEMSaturn") ||
-			!stricmp(G->vessel->GetClassName(), "ProjectApollo/LEMSaturn")) {
+			!stricmp(G->vessel->GetClassName(), "ProjectApollo/LEM")) {
 			LEM *lem = (LEM *)G->vessel;
 			if (lem->GetStage() < 2)
 			{
@@ -4736,24 +4748,22 @@ ApolloRTCCMFD::ScreenData ApolloRTCCMFD::screenData = { 0 };
 void ApolloRTCCMFD::GetREFSMMATfromAGC()
 {
 	agc_t* vagc;
+	int REFSMMATaddress;
 
 	if (G->vesseltype < 2)
 	{
 		saturn = (Saturn *)G->vessel;
-
 		vagc = &saturn->agc.vagc;
+		REFSMMATaddress = GC->rtcc->MCCCRF_DL;
 	}
 	else
 	{
 		lem = (LEM *)G->vessel;
-
 		vagc = &lem->agc.vagc;
+		REFSMMATaddress = GC->rtcc->MCCLRF_DL;
 	}
 
 	unsigned short REFSoct[20];
-	int REFSMMATaddress;
-
-	REFSMMATaddress = G->REFSMMATOctalAddress();
 
 	REFSoct[2] = vagc->Erasable[0][REFSMMATaddress];
 	REFSoct[3] = vagc->Erasable[0][REFSMMATaddress + 1];
@@ -6404,6 +6414,32 @@ bool LLTPThresholdTimeInput(void *id, char *str, void *data)
 void ApolloRTCCMFD::set_LLTPThresholdTime(double get)
 {
 	GC->rtcc->med_k50.GETTH = get;
+}
+
+void ApolloRTCCMFD::menuLLTPVectorTime()
+{
+	if (GC->MissionPlanningActive)
+	{
+		bool LLTPVectorTimeInput(void *id, char *str, void *data);
+		oapiOpenInputBox("Choose the vector time for liftoff (Format: hhh:mm:ss)", LLTPVectorTimeInput, 0, 20, (void*)this);
+	}
+}
+
+bool LLTPVectorTimeInput(void *id, char *str, void *data)
+{
+	int hh, mm, ss, get;
+	if (sscanf(str, "%d:%d:%d", &hh, &mm, &ss) == 3)
+	{
+		get = ss + 60 * (mm + 60 * hh);
+		((ApolloRTCCMFD*)data)->set_LLTPVectorTime(get);
+		return true;
+	}
+	return false;
+}
+
+void ApolloRTCCMFD::set_LLTPVectorTime(double get)
+{
+	GC->rtcc->med_k50.GETV = get;
 }
 
 void ApolloRTCCMFD::menuLunarLiftoffVHorInput()
@@ -8218,6 +8254,16 @@ bool GOSTShowLandmarkVectorInput(void* id, char *str, void *data)
 		return true;
 	}
 	return false;
+}
+
+void ApolloRTCCMFD::menuSLVNavigationUpdateCalc()
+{
+	G->SLVNavigationUpdateCalc();
+}
+
+void ApolloRTCCMFD::menuSLVNavigationUpdateUplink()
+{
+	G->SLVNavigationUpdateUplink();
 }
 
 void ApolloRTCCMFD::menuMSKRequest()

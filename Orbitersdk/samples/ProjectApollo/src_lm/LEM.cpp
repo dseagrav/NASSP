@@ -99,6 +99,40 @@ BOOL WINAPI DllMain (HINSTANCE hModule,
 	return TRUE;
 }
 
+DLLCLBK VESSEL *ovcInit(OBJHANDLE hvessel, int flightmodel)
+
+{
+	LEM *lem;
+
+	if (!refcount++) {
+		LEMLoadMeshes();
+	}
+
+	// VESSELSOUND 
+
+	lem = new LEM(hvessel, flightmodel);
+	return static_cast<VESSEL *> (lem);
+}
+
+DLLCLBK void ovcExit(VESSEL *vessel)
+
+{
+	TRACESETUP("ovcExit LMPARKED");
+
+	--refcount;
+
+	if (!refcount) {
+		TRACE("refcount == 0");
+
+		//
+		// This code could tidy up allocations when refcount == 0
+		//
+
+	}
+
+	if (vessel) delete static_cast<LEM *> (vessel);
+}
+
 // DS20060302 DX8 callback for enumerating joysticks
 BOOL CALLBACK EnumJoysticksCallback(const DIDEVICEINSTANCE* pdidInstance, VOID* pLEM)
 {
@@ -228,6 +262,7 @@ LEM::LEM(OBJHANDLE hObj, int fmodel) : Payload (hObj, fmodel),
 	CSMToLEMPowerConnector(this),
 	LEMToSLAConnector(this),
 	CSMToLEMCommandConnector(this),
+	lm_rr_to_csm_connector(this, &RR),
 	cdi(this),
 	AOTLampFeeder("AOT-Lamp-Feeder", Panelsdk)
 {
@@ -294,7 +329,6 @@ void LEM::Init()
 	viewpos = LMVIEW_CDR;
 	stage = 0;
 	status = 0;
-	InvertStageBit = false;
 	CDRinPLSS = 0;
 	LMPinPLSS = 0;
 
@@ -306,6 +340,7 @@ void LEM::Init()
 	InFOV = true;
 	SaveFOV = 0;
 	VcInfoActive = false;
+	VcInfoEnabled = false;
 
 	Crewed = true;
 	AutoSlow = false;
@@ -389,6 +424,7 @@ void LEM::Init()
 	CSMToLEMPowerConnector.SetType(LEM_CSM_POWER);
 	CSMToLEMECSConnector.SetType(LEM_CSM_ECS);
 	LEMToSLAConnector.SetType(PAYLOAD_SLA_CONNECT);
+	lm_rr_to_csm_connector.SetType(RADAR_RF_SIGNAL);
 
 	LEMToCSMConnector.AddTo(&CSMToLEMPowerConnector);
 	LEMToCSMConnector.AddTo(&CSMToLEMCommandConnector);
@@ -429,6 +465,7 @@ void LEM::Init()
 	RegisterConnector(0, &LEMToCSMConnector);
 	RegisterConnector(0, &CSMToLEMECSConnector);
 	RegisterConnector(1, &LEMToSLAConnector);
+	RegisterConnector(VIRTUAL_CONNECTOR_PORT, &lm_rr_to_csm_connector);
 
 	// Do this stuff only once
 	if(!InitLEMCalled){
@@ -783,10 +820,12 @@ int LEM::clbkConsumeBufferedKey(DWORD key, bool down, char *keystate) {
 			case OAPI_KEY_MINUS:
 				//increase descent rate
 				agc.SetInputChannelBit(016, DescendMinus, 0);
+				Sclick.play();
 				break;
 			case OAPI_KEY_EQUALS:
 				//decrease descent rate
 				agc.SetInputChannelBit(016, DescendPlus, 0);
+				Sclick.play();
 				break;
 
 			case OAPI_KEY_NUMPAD0:
@@ -827,16 +866,6 @@ int LEM::clbkConsumeBufferedKey(DWORD key, bool down, char *keystate) {
 
 	case OAPI_KEY_E:
 		return 0;
-
-	case OAPI_KEY_6:
-		viewpos = LMVIEW_CDR;
-		SetView();
-		return 1;
-
-	case OAPI_KEY_7:
-		viewpos = LMVIEW_LMP;
-		SetView();
-		return 1;
 
 	//
 	// Used by P64
@@ -923,6 +952,12 @@ void LEM::clbkPreStep (double simt, double simdt, double mjd) {
 		return;
 	}
 
+	// Prevent Orbiter navmodes from doing stuff
+	if (GetNavmodeState(NAVMODE_HOLDALT))
+	{
+		DeactivateNavmode(NAVMODE_HOLDALT);
+	}
+
 	//
 	// Internal/External view check
 	//
@@ -976,7 +1011,7 @@ void LEM::clbkPreStep (double simt, double simdt, double mjd) {
 	}
 
 	// Debug string for displaying descent flight info from VC view
-	if (!Landed && GetAltitude(ALTMODE_GROUND) < 10000.0 && EngineArmSwitch.GetState() == 0 && oapiCockpitMode() == COCKPIT_VIRTUAL) {
+	if (VcInfoEnabled && !Landed && GetAltitude(ALTMODE_GROUND) < 10000.0 && EngineArmSwitch.GetState() == 0 && oapiCockpitMode() == COCKPIT_VIRTUAL && viewpos == LMVIEW_LPD) {
 
 		char pgnssw[256];
 		char thrsw[256];
@@ -999,9 +1034,10 @@ void LEM::clbkPreStep (double simt, double simdt, double mjd) {
 		if (!VcInfoActive) VcInfoActive = true;
 
 	} else {
-		if (!VcInfoActive) return;
-		sprintf(oapiDebugString(), "");
-		VcInfoActive = false;
+		if (VcInfoActive) {
+			sprintf(oapiDebugString(), "");
+			VcInfoActive = false;
+		}
 	}
 }
 
@@ -1035,7 +1071,7 @@ void LEM::clbkPostStep(double simt, double simdt, double mjd)
 
 	if (th_hover[0] && !ExtView)
 	{
-		if ((GetThrusterLevel(th_hover[0]) > 0) && (InVC || (InPanel && PanelId == LMPANEL_LPDWINDOW)))
+		if ((GetThrusterLevel(th_hover[0]) > 0) && InVC)
 		{
 			double amt = max(0.02, GetThrusterLevel(th_hover[0]) / 20);
 			JostleViewpoint(amt);
@@ -1063,7 +1099,7 @@ void LEM::clbkPostStep(double simt, double simdt, double mjd)
 	if (ph_RCSB != NULL) { CurrentFuelWeight += GetPropellantMass(ph_RCSB); }
 	// If the weight has changed by more than this value, update things.
 	// The value is to be adjusted such that the updates are not too frequent (impacting framerate)
-	//   but are sufficiently fine to keep the LGC happy.
+	// but are sufficiently fine to keep the LGC happy.
 	if ((LastFuelWeight - CurrentFuelWeight) > 100.0) {
 		// Update physical parameters
 		VECTOR3 pmi, CoG;
@@ -1557,9 +1593,6 @@ void LEM::GetScenarioState(FILEHANDLE scn, void *vs)
 		else if (!strnicmp(line, "<INTERNALS>", 11)) { //INTERNALS signals the PanelSDK part of the scenario
 			Panelsdk.Load(scn);			//send the loading to the Panelsdk
 		}
-		else if (!strnicmp(line, "LEMSATURN_BEGIN", 15)) {
-			LoadLEMSaturn(scn);
-		}
 		else if (!strnicmp(line, ChecklistControllerStartString, strlen(ChecklistControllerStartString)))
 		{
 			checkControl.load(scn);
@@ -1608,6 +1641,8 @@ void LEM::clbkPostCreation()
 		DelDock(docksla);
 		docksla = NULL;
 	}
+
+	CreateAirfoils();
 }
 
 void LEM::clbkVisualCreated(VISHANDLE vis, int refcount)
@@ -1649,6 +1684,7 @@ void LEM::clbkDockEvent(int dock, OBJHANDLE connected)
 		else
 		{
 			UndockConnectors(dock);
+			CreateAirfoils();
 		}
 	}
 }
@@ -1751,6 +1787,11 @@ bool LEM::ProcessConfigFileLine(FILEHANDLE scn, char *line)
 				break;
 			}
 		}
+	}
+	else if (!strnicmp(line, "VCINFOENABLED", 13)) {
+		int i;
+		sscanf(line + 13, "%d", &i);
+		VcInfoEnabled = (i != 0);
 	}
 	return true;
 }
@@ -1901,7 +1942,6 @@ void LEM::clbkSaveState (FILEHANDLE scn)
 	atca.SaveState(scn);
 	MissionTimerDisplay.SaveState(scn, "MISSIONTIMER_START", MISSIONTIMER_END_STRING, false);
 	EventTimerDisplay.SaveState(scn, "EVENTTIMER_START", EVENTTIMER_END_STRING, true);
-	SaveLEMSaturn(scn);
 	checkControl.save(scn);
 }
 
@@ -2103,7 +2143,8 @@ void LEM::CalculatePMIandCOG(VECTOR3 &PMI, VECTOR3 &COG)
 		double tanky = 4.067429;
 		//Y-coordinate of "rest" of the full LM (empirically derived)
 		double resty = 5.5;
-		double fm = GetPropellantMass(ph_Dsc);
+		double fm = 0.0;
+		if (ph_Dsc != NULL) { fm = GetPropellantMass(ph_Dsc); }
 		double restmass = m - fm;
 		double totaly = (tanky*fm + resty * restmass) / m;
 

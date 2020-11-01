@@ -2767,7 +2767,7 @@ void Saturn::SetSwitches(int panel) {
 	SBandFMXMTRGroup1CB.Init	(171,  15, 29, 29, srf[SRF_CIRCUITBRAKER], srf[SRF_BORDER_29x29], Panel225CircuitBreakersRow, &TelcomGroup1Switch, 2.0);
 	CentralTimingEquipMNACB.Init(264, 400, 29, 29, srf[SRF_CIRCUITBRAKER], srf[SRF_BORDER_29x29], Panel225CircuitBreakersRow);
 	CentralTimingEquipMNBCB.Init(264, 357, 29, 29, srf[SRF_CIRCUITBRAKER], srf[SRF_BORDER_29x29], Panel225CircuitBreakersRow);
-	RNDZXPNDRFLTBusCB.Init		(264, 314, 29, 29, srf[SRF_CIRCUITBRAKER], srf[SRF_BORDER_29x29], Panel225CircuitBreakersRow);
+	RNDZXPNDRFLTBusCB.Init		(264, 314, 29, 29, srf[SRF_CIRCUITBRAKER], srf[SRF_BORDER_29x29], Panel225CircuitBreakersRow, &FlightBus, 10.0);
 	SIGCondrFLTBusCB.Init		(264, 271, 29, 29, srf[SRF_CIRCUITBRAKER], srf[SRF_BORDER_29x29], Panel225CircuitBreakersRow, &FlightBus, 5.0);
 	SBandPWRAmpl1FLTBusCB.Init	(264, 228, 29, 29, srf[SRF_CIRCUITBRAKER], srf[SRF_BORDER_29x29], Panel225CircuitBreakersRow, &FlightBus, 5.0);
 	SBandPWRAmpl1Group1CB.Init	(264, 157, 29, 29, srf[SRF_CIRCUITBRAKER], srf[SRF_BORDER_29x29], Panel225CircuitBreakersRow, &TelcomGroup1Switch, 2.0);

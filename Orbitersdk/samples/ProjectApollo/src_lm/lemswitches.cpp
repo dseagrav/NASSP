@@ -1437,6 +1437,12 @@ void LEMDCVoltMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface){
 	oapiBlt(drawSurface, FrameSurface, 0, 0, 0, 0, 99, 98, SURF_PREDEF_CK);
 }
 
+void LEMDCVoltMeter::DoDrawSwitchVC(UINT anim) {
+
+	double v = (GetDisplayValue() - 19) / 22;
+	lem->SetAnimation(anim, v);
+}
+
 // DC Ammeter
 
 void LEMDCAmMeter::Init(HPEN p0, HPEN p1, SwitchRow &row, LEM *s, SURFHANDLE frameSurface)
@@ -1498,6 +1504,12 @@ void LEMDCAmMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface){
 	oapiBlt(drawSurface, FrameSurface, 0, 0, 0, 0, 99, 98, SURF_PREDEF_CK);
 }
 
+void LEMDCAmMeter::DoDrawSwitchVC(UINT anim) {
+
+	double v = GetDisplayValue() / maxValue;
+	lem->SetAnimation(anim, v);
+}
+
 // LEM Voltmeter-feeding CB hack
 double LEMVoltCB::Current()
 {	
@@ -1524,6 +1536,17 @@ bool EngineStartButton::CheckMouseClick(int event, int mx, int my) {
 	if (!visible) return false;
 	if (mx < x || my < y) return false;
 	if (mx >(x + width) || my >(y + height)) return false;
+
+	if (event == PANEL_MOUSE_LBDOWN)
+	{
+		Push();
+	}
+	return true;
+}
+
+bool EngineStartButton::CheckMouseClickVC(int event) {
+
+	int OldState = state;
 
 	if (event == PANEL_MOUSE_LBDOWN)
 	{
@@ -1572,6 +1595,18 @@ void EngineStartButton::DoDrawSwitch(SURFHANDLE DrawSurface) {
 	}
 }
 
+void EngineStartButton::DoDrawSwitchVC(UINT anim) {
+
+	if (IsUp())
+	{
+		lem->SetAnimation(anim, 1.0);
+	}
+	else
+	{
+		lem->SetAnimation(anim, 0.0);
+	}
+}
+
 void EngineStopButton::Init(int xp, int yp, int w, int h, SURFHANDLE surf, SURFHANDLE bsurf, SwitchRow &row, int xoffset, int yoffset, ToggleSwitch* startbutton, LEM *l) {
 	ToggleSwitch::Init(xp, yp, w, h, surf, bsurf, row, xoffset, yoffset);
 	lem = l;
@@ -1585,6 +1620,17 @@ bool EngineStopButton::CheckMouseClick(int event, int mx, int my) {
 	if (!visible) return false;
 	if (mx < x || my < y) return false;
 	if (mx >(x + width) || my >(y + height)) return false;
+
+	if (event == PANEL_MOUSE_LBDOWN)
+	{
+		Push();
+	}
+	return true;
+}
+
+bool EngineStopButton::CheckMouseClickVC(int event) {
+
+	int OldState = state;
 
 	if (event == PANEL_MOUSE_LBDOWN)
 	{
@@ -1634,6 +1680,18 @@ void EngineStopButton::DoDrawSwitch(SURFHANDLE DrawSurface) {
 		{
 			oapiBlt(DrawSurface, SwitchSurface, x, y, xOffset + width, yOffset, width, height, SURF_PREDEF_CK);
 		}
+	}
+}
+
+void EngineStopButton::DoDrawSwitchVC(UINT anim) {
+
+	if (IsUp())
+	{
+		lem->SetAnimation(anim, 1.0);
+	}
+	else
+	{
+		lem->SetAnimation(anim, 0.0);
 	}
 }
 
@@ -1872,6 +1930,11 @@ void LEMSteerableAntennaPitchMeter::DoDrawSwitch(double v, SURFHANDLE drawSurfac
 	oapiBlt(drawSurface, FrameSurface, 0, 0, 0, 0, 91, 90, SURF_PREDEF_CK);
 }
 
+void LEMSteerableAntennaPitchMeter::DoDrawSwitchVC(UINT anim) {
+	double v = (GetDisplayValue() + 75) / 330;
+	lem->SetAnimation(anim, v);
+}
+
 void LEMSteerableAntennaYawMeter::Init(HPEN p0, HPEN p1, SwitchRow &row, LEM *s, SURFHANDLE frameSurface)
 {
 	LEMRoundMeter::Init(p0, p1, row, s);
@@ -1888,6 +1951,11 @@ void LEMSteerableAntennaYawMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface)
 	oapiBlt(drawSurface, FrameSurface, 0, 0, 0, 0, 91, 90, SURF_PREDEF_CK);
 }
 
+void LEMSteerableAntennaYawMeter::DoDrawSwitchVC(UINT anim) {
+	double v = (GetDisplayValue() + 75) / 150;
+	lem->SetAnimation(anim, (v + 0.56) * 0.47);
+}
+
 void LEMSBandAntennaStrengthMeter::Init(HPEN p0, HPEN p1, SwitchRow &row, LEM *s, SURFHANDLE frameSurface)
 {
 	LEMRoundMeter::Init(p0, p1, row, s);
@@ -1902,6 +1970,11 @@ void LEMSBandAntennaStrengthMeter::DoDrawSwitch(double v, SURFHANDLE drawSurface
 	v = 220.0 - 2.7*v;
 	DrawNeedle(drawSurface, 91 / 2, 90 / 2, 25.0, v * RAD);
 	oapiBlt(drawSurface, FrameSurface, 0, 0, 0, 0, 91, 90, SURF_PREDEF_CK);
+}
+
+void LEMSBandAntennaStrengthMeter::DoDrawSwitchVC(UINT anim) {
+	double v = GetDisplayValue();
+	lem->SetAnimation(anim, v / 100);
 }
 
 LEMDPSValveTalkback::LEMDPSValveTalkback()

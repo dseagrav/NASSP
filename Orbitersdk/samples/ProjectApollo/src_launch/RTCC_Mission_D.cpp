@@ -38,7 +38,7 @@ bool RTCC::CalculationMTP_D(int fcn, LPVOID &pad, char * upString, char * upDesc
 	bool scrubbed = false;
 
 	double AGCEpoch = 40221.525;
-	int LGCREFSAddrOffs = -2;
+	int LGCREFSAddrOffs = 0;
 
 	switch (fcn) {
 	case 1: //GENERIC CSM STATE VECTOR UPDATE
@@ -481,7 +481,7 @@ bool RTCC::CalculationMTP_D(int fcn, LPVOID &pad, char * upString, char * upDesc
 		refsopt.vesseltype = 3;
 		refsopt.csmlmdocked = true;
 		refsopt.GETbase = GETbase;
-		refsopt.HeadsUp = false;
+		refsopt.HeadsUp = true;
 
 		REFSMMAT = REFSMMATCalc(&refsopt);
 		calcParams.StoredREFSMMAT = REFSMMAT;
@@ -544,9 +544,9 @@ bool RTCC::CalculationMTP_D(int fcn, LPVOID &pad, char * upString, char * upDesc
 
 		manopt.csmlmdocked = true;
 		manopt.dV_LVLH = DeltaV_LVLH;
-		manopt.enginetype = 1;
+		manopt.enginetype = RTCC_ENGINETYPE_LMDPS;
 		manopt.GETbase = GETbase;
-		manopt.HeadsUp = false;
+		manopt.HeadsUp = true;
 		manopt.REFSMMAT = calcParams.StoredREFSMMAT;
 		manopt.TIG = TimeofIgnition;
 		manopt.vessel = calcParams.tgt;

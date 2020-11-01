@@ -244,20 +244,19 @@ void H1Engine::SetThrusterDir(double beta_y, double beta_p)
 	vessel->SetThrusterDir(th_h1, f1vector);
 }
 
-SIBSystems::SIBSystems(VESSEL *v, THRUSTER_HANDLE *h1, PROPELLANT_HANDLE &h1prop, Pyro &SIB_SIVB_Sep, Sound &LaunchS, Sound &SShutS, double &contraillvl) :
+SIBSystems::SIBSystems(VESSEL *v, THRUSTER_HANDLE *h1, PROPELLANT_HANDLE &h1prop, Pyro &SIB_SIVB_Sep, Sound &LaunchS, Sound &SShutS) :
 	main_propellant(h1prop),
 	h1engine1(v, h1[0], true, 2.45*RAD, 2.45*RAD),
-	h1engine2(v, h1[1], true, 2.45*RAD, -2.45*RAD),
+	h1engine2(v, h1[1], true, -2.45*RAD, 2.45*RAD),
 	h1engine3(v, h1[2], true, -2.45*RAD, -2.45*RAD),
-	h1engine4(v, h1[3], true, -2.45*RAD, 2.45*RAD),
+	h1engine4(v, h1[3], true, 2.45*RAD, -2.45*RAD),
 	h1engine5(v, h1[4], false, 0, 0),
 	h1engine6(v, h1[5], false, 0, 0),
 	h1engine7(v, h1[6], false, 0, 0),
 	h1engine8(v, h1[7], false, 0, 0),
 	SIB_SIVB_Separation_Pyros(SIB_SIVB_Sep),
 	SShutSound(SShutS),
-	LaunchSound(LaunchS),
-	contrailLevel(contraillvl)
+	LaunchSound(LaunchS)
 {
 	vessel = v;
 
@@ -297,6 +296,9 @@ SIBSystems::SIBSystems(VESSEL *v, THRUSTER_HANDLE *h1, PROPELLANT_HANDLE &h1prop
 	FuelDepletionCutoffInhibitRelay1 = false;
 	FuelDepletionCutoffInhibitRelay2 = false;
 	OutboardEnginesCutoffSignal = false;
+	SIB_SIVB_SeparationCmdLatch = false;
+	EBWFiringUnit1TriggerRelay = false;
+	EBWFiringUnit2TriggerRelay = false;
 
 	h1engines[0] = &h1engine1;
 	h1engines[1] = &h1engine2;
@@ -306,6 +308,8 @@ SIBSystems::SIBSystems(VESSEL *v, THRUSTER_HANDLE *h1, PROPELLANT_HANDLE &h1prop
 	h1engines[5] = &h1engine6;
 	h1engines[6] = &h1engine7;
 	h1engines[7] = &h1engine8;
+
+	SCMUmb = NULL;
 }
 
 void SIBSystems::SaveState(FILEHANDLE scn) {
@@ -339,6 +343,7 @@ void SIBSystems::SaveState(FILEHANDLE scn) {
 	papiWriteScenario_bool(scn, "FUELDEPLETIONCUTOFFINHIBITRELAY1", FuelDepletionCutoffInhibitRelay1);
 	papiWriteScenario_bool(scn, "FUELDEPLETIONCUTOFFINHIBITRELAY2", FuelDepletionCutoffInhibitRelay2);
 	papiWriteScenario_bool(scn, "OUTBOARDENGINESCUTOFFSIGNAL", OutboardEnginesCutoffSignal);
+	papiWriteScenario_bool(scn, "SIBSIVBSEPARATIONCMDLATCH", SIB_SIVB_SeparationCmdLatch);
 	papiWriteScenario_boolarr(scn, "THRUSTOK", ThrustOK, 24);
 
 	h1engine1.SaveState(scn, "ENGINE1_BEGIN", "ENGINE_END");
@@ -388,6 +393,7 @@ void SIBSystems::LoadState(FILEHANDLE scn) {
 		papiReadScenario_bool(line, "FUELDEPLETIONCUTOFFINHIBITRELAY1", FuelDepletionCutoffInhibitRelay1);
 		papiReadScenario_bool(line, "FUELDEPLETIONCUTOFFINHIBITRELAY2", FuelDepletionCutoffInhibitRelay2);
 		papiReadScenario_bool(line, "OUTBOARDENGINESCUTOFFSIGNAL", OutboardEnginesCutoffSignal);
+		papiReadScenario_bool(line, "SIBSIVBSEPARATIONCMDLATCH", SIB_SIVB_SeparationCmdLatch);
 		papiReadScenario_boolarr(line, "THRUSTOK", ThrustOK, 24);
 
 		if (!strnicmp(line, "ENGINE1_BEGIN", sizeof("ENGINE1_BEGIN"))) {
@@ -444,6 +450,22 @@ void SIBSystems::Timestep(double misst, double simdt)
 	else
 	{
 		LiftoffRelay = false;
+	}
+
+	if (SIB_SIVB_SeparationCmdLatch)
+	{
+		EBWFiringUnit1TriggerRelay = true;
+		EBWFiringUnit2TriggerRelay = true;
+	}
+	else
+	{
+		EBWFiringUnit1TriggerRelay = false;
+		EBWFiringUnit2TriggerRelay = false;
+	}
+
+	if (EBWFiringUnit1TriggerRelay || EBWFiringUnit2TriggerRelay)
+	{
+		SIB_SIVB_Separation_Pyros.SetBlown(true);
 	}
 
 	if (PropellantLevelSensorsEnabledLatch)
@@ -639,10 +661,6 @@ void SIBSystems::Timestep(double misst, double simdt)
 		}
 	}
 
-	//Contrail Level
-
-	contrailLevel = min(1.0, max(0.0, GetSumThrust()*(-vessel->GetAltitude(ALTMODE_GROUND) + 400.0) / 300.0));
-
 	//sprintf(oapiDebugString(), "Startup: %f %f %f %f %f %f %f %f", h1engine1.GetThrustLevel(), h1engine2.GetThrustLevel(),
 	//	h1engine3.GetThrustLevel(), h1engine4.GetThrustLevel(), h1engine5.GetThrustLevel(), h1engine6.GetThrustLevel(),
 	//	h1engine7.GetThrustLevel(), h1engine8.GetThrustLevel());
@@ -714,6 +732,12 @@ bool SIBSystems::GetOutboardEnginesCutoff()
 	return OutboardEnginesCutoffSignal;
 }
 
+bool SIBSystems::FireRetroRockets()
+{
+	//Charge and Trigger
+	return (LowPropellantLevelRelay && (EBWFiringUnit1TriggerRelay || EBWFiringUnit2TriggerRelay));
+}
+
 double SIBSystems::GetSumThrust()
 {
 	double thrust = 0.0;
@@ -780,7 +804,7 @@ void SIBSystems::SwitchSelector(int channel)
 		SetOutboardEnginesCutoff();
 		break;
 	case 23: //S-IB/S-IVB Separation On
-		SIB_SIVB_Separation_Pyros.SetBlown(true);
+		Set_SIB_SIVB_SeparationCmdLatch();
 		break;
 	case 39: //Telemeter Calibration Off
 		break;

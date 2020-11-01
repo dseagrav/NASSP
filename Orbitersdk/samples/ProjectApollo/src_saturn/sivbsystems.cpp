@@ -592,6 +592,8 @@ void SIVB200Systems::SwitchSelector(int channel)
 	case 83: //Prevalves Close Off
 		PrevalvesCloseOn = false;
 		break;
+	case 85: //Passivation Enable
+		break;
 	case 97: //Point Level Sensor Arming
 		PointLevelSensorArming();
 		break;

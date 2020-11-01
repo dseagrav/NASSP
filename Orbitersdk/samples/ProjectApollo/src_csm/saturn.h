@@ -1023,7 +1023,6 @@ public:
 	/// 
 	/// \brief LVDC "Switch Selector" staging support utility function
 	/// 
-	virtual void SwitchSelector(int item) = 0;
 	virtual void SISwitchSelector(int channel) = 0;
 	virtual void SIISwitchSelector(int channel) {}
 	void SIVBSwitchSelector(int channel);
@@ -3507,6 +3506,7 @@ protected:
 	VHFAntenna vhfb;
 	VHFRangingSystem vhfranging;
 	VHFAMTransceiver vhftransceiver;
+	RNDZXPDRSystem RRTsystem;
 
 	//Instrumentation
 	SCE sce;
@@ -4317,6 +4317,8 @@ protected:
 	// Checklist Controller to CSM connector
 	ChecklistDataInterface cdi;
 
+	CSM_RRTto_LM_RRConnector CSM_RRTto_LM_RRConnector;
+
 	//
 	// PanelSDK pointers.
 	//
@@ -4442,6 +4444,7 @@ protected:
 	friend class SaturnSPSHeliumNitrogenPressMeter;
 	friend class SaturnLMDPGauge;
 	friend class VHFRangingSystem;
+	friend class RNDZXPDRSystem;
 	friend class DockingTargetSwitch;
 	friend class SCE;
 	// Friend class the MFD too so it can steal our data

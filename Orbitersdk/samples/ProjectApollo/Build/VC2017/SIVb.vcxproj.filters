@@ -63,6 +63,9 @@
     <ClCompile Include="..\..\src_saturn\IUControlSignalProcessor.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\src_sys\pyro.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\src_sys\connector.h">
@@ -111,6 +114,9 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\..\src_saturn\IUControlSignalProcessor.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\src_sys\pyro.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>

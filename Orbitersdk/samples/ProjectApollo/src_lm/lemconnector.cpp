@@ -200,3 +200,66 @@ bool LEMCommandConnector::ReceiveMessage(Connector *from, ConnectorMessage &m)
 
 	return false;
 }
+
+LM_RRtoCSM_RRT_Connector::LM_RRtoCSM_RRT_Connector(LEM *l, LEM_RR *lm_rr) : LEMConnector(l)
+{
+	type = RADAR_RF_SIGNAL;
+	lemrr = lm_rr;
+}
+
+LM_RRtoCSM_RRT_Connector::~LM_RRtoCSM_RRT_Connector()
+{
+
+}
+
+void LM_RRtoCSM_RRT_Connector::SendRF(double freq, double XMITpow, double XMITgain, double Phase)
+{
+	ConnectorMessage cm;
+
+	cm.destination = RADAR_RF_SIGNAL;
+	cm.messageType = CW_RADAR_SIGNAL;
+
+	cm.val1.dValue = freq;
+	cm.val2.dValue = XMITpow;
+	cm.val3.dValue = XMITgain;
+	cm.val4.dValue = Phase;
+
+	SendMessage(cm);
+
+	//sprintf(oapiDebugString(), "Hey this Function got called at %lf", oapiGetSimTime());
+
+}
+
+bool LM_RRtoCSM_RRT_Connector::ReceiveMessage(Connector * from, ConnectorMessage & m)
+{
+	//sprintf(oapiDebugString(), "Hey this Function got called at %lf", oapiGetSimTime()); //debugging
+	if (m.destination != type)
+	{
+		return false;
+	}
+
+	if (!lemrr)
+	{
+		return false;
+	}
+
+	LM_RRmessageType messageType;
+	messageType = (LM_RRmessageType)m.messageType;
+
+	switch (messageType)
+	{
+		case RR_XPDR_SIGNAL:
+		{
+			//sprintf(oapiDebugString(),"Frequency Received: %lf MHz", m.val1.dValue);
+			lemrr->SetRCVDrfProp(m.val1.dValue, m.val2.dValue, m.val3.dValue, m.val4.dValue);
+
+			return true;
+		}
+		case CW_RADAR_SIGNAL:
+		{
+			return false;
+		}
+	}
+
+	return false;
+}

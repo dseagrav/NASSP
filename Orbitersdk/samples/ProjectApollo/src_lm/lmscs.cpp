@@ -38,6 +38,7 @@
 #include "lm_channels.h"
 #include "tracer.h"
 #include "papi.h"
+#include "Mission.h"
 #include "LEM.h"
 
 // RATE GYRO ASSEMBLY
@@ -2231,6 +2232,19 @@ void SCCA2::Timestep(double simdt)
 	}
 
 	//TBD: K23 and K24 are only used by GSE
+	K23 = false;
+	K24 = false;
+
+	if (lem->stage > 1 || (K23 && K24))
+	{
+		tempsignal = false;
+	}
+	else
+	{
+		tempsignal = true;
+	}
+	if (lem->pMission->IsLMStageBitInverted()) tempsignal = !tempsignal;
+	lem->agc.SetInputChannelBit(030, DescendStageAttached, tempsignal);
 }
 
 void SCCA2::SaveState(FILEHANDLE scn, char *start_str, char *end_str) {

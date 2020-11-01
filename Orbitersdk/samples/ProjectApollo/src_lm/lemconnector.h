@@ -82,3 +82,20 @@ public:
 
 	bool ReceiveMessage(Connector *from, ConnectorMessage &m);
 };
+
+class LEM_RR;
+
+class LM_RRtoCSM_RRT_Connector : public LEMConnector
+{
+public:
+	LM_RRtoCSM_RRT_Connector(LEM *l, LEM_RR *lm_rr); //constructor
+	~LM_RRtoCSM_RRT_Connector(); //descructor
+
+	void SendRF(double freq, double XMITpow, double XMITgain, double Phase);
+	bool ReceiveMessage(Connector *from, ConnectorMessage &m);
+
+	void SetRR(LEM_RR* lm_rr) { lemrr = lm_rr; };
+
+protected:
+	LEM_RR* lemrr; //pointer to the instance of the RR that's doing the sending
+};

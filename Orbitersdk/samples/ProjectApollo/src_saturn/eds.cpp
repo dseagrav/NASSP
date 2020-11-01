@@ -651,7 +651,7 @@ void EDS1B::Timestep(double simdt)
 	//S-IB Thrust Monitor
 	if (IUEDSBusPowered && Stage <= LAUNCH_STAGE_ONE)
 	{
-		iu->GetLVCommandConnector()->GetSIThrustOK(ThrustOKSignal);
+		iu->GetLVCommandConnector()->GetSIThrustOK(ThrustOKSignal, 24);
 		for (int i = 0;i < 8;i++)
 		{
 			SIThrustNotOK[i] = TripleVoting(!ThrustOKSignal[3 * i], !ThrustOKSignal[3 * i + 1], !ThrustOKSignal[3 * i + 2]);
@@ -838,7 +838,7 @@ void EDSSV::Timestep(double simdt)
 	//S-IC Thrust Monitor
 	if (IUEDSBusPowered && Stage <= LAUNCH_STAGE_ONE)
 	{
-		iu->GetLVCommandConnector()->GetSIThrustOK(ThrustOKSignal);
+		iu->GetLVCommandConnector()->GetSIThrustOK(ThrustOKSignal, 15);
 		for (int i = 0;i < 5;i++)
 		{
 			SIThrustNotOK[i] = TripleVoting(!ThrustOKSignal[3 * i], !ThrustOKSignal[3 * i + 1], !ThrustOKSignal[3 * i + 2]);

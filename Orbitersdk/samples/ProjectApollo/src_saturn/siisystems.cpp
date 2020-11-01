@@ -174,6 +174,11 @@ void SIISystems::Timestep(double simdt)
 		}
 	}
 
+	if (ullage && sepSound.isPlaying() && vessel->GetThrusterGroupLevel(ullage) < 1.0)
+	{
+		sepSound.stop();
+	}
+
 	//Failure code
 	FailureTimer += simdt;
 

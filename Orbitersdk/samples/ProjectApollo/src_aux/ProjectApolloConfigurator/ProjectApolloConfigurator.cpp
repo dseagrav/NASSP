@@ -66,6 +66,7 @@ static struct {
 	int Saturn_MultiThread;
 	int Saturn_VAGCChecklistAutoSlow;
 	int Saturn_VAGCChecklistAutoEnabled;
+	int Saturn_VcInfoEnabled;
 } gParams;
 
 
@@ -130,6 +131,8 @@ ProjectApolloConfigurator::ProjectApolloConfigurator (): LaunchpadItem ()
 			sscanf (line + 14, "%i", &gParams.Saturn_RHCTHCToggleId);
 		} else if (!strnicmp (line, "JOYSTICK_RTT", 12)) {
 			sscanf (line + 12, "%i", &gParams.Saturn_RHCTHCToggle);
+		} else if (!strnicmp(line, "VCINFOENABLED", 13)) {
+			sscanf(line + 13, "%i", &gParams.Saturn_VcInfoEnabled);
 		}
 	}	
 	oapiCloseFile (hFile, FILE_IN);
@@ -204,6 +207,9 @@ void ProjectApolloConfigurator::WriteConfig(FILEHANDLE hFile)
 	oapiWriteLine(hFile, cbuf);
 
 	oapiWriteLine(hFile, "JOYSTICK_TAUTO");	// Not configurable currently
+
+	sprintf(cbuf, "VCINFOENABLED %d", gParams.Saturn_VcInfoEnabled);
+	oapiWriteLine(hFile, cbuf);
 
 	oapiCloseFile (hFile, FILE_OUT);
 }
@@ -378,6 +384,12 @@ BOOL CALLBACK ProjectApolloConfigurator::DlgProcFrame (HWND hWnd, UINT uMsg, WPA
 				} else {
 					gParams.Saturn_VAGCChecklistAutoEnabled = 0;
 				}
+				if (SendDlgItemMessage(gParams.hDlgTabs[2], IDC_CHECK_VCINFOENABLED, BM_GETCHECK, 0, 0) == BST_CHECKED) {
+					gParams.Saturn_VcInfoEnabled = 1;
+				}
+				else {
+					gParams.Saturn_VcInfoEnabled = 0;
+				}
 
 				EndDialog (hWnd, 0);
 				return 0;
@@ -474,6 +486,8 @@ BOOL CALLBACK ProjectApolloConfigurator::DlgProcControl (HWND hWnd, UINT uMsg, W
 		SendDlgItemMessage(hWnd, IDC_CHECK_VAGCCHECKLISTAUTOSLOW, BM_SETCHECK, gParams.Saturn_VAGCChecklistAutoSlow?BST_CHECKED:BST_UNCHECKED, 0);
 
 		SendDlgItemMessage(hWnd, IDC_CHECK_VAGCCHECKLISTAUTOENABLED, BM_SETCHECK, gParams.Saturn_VAGCChecklistAutoEnabled?BST_CHECKED:BST_UNCHECKED, 0);
+
+		SendDlgItemMessage(hWnd, IDC_CHECK_VCINFOENABLED, BM_SETCHECK, gParams.Saturn_VcInfoEnabled ? BST_CHECKED : BST_UNCHECKED, 0);
 
 		UpdateControlState(hWnd);
 		return TRUE;
@@ -609,6 +623,7 @@ DLLCLBK void opcDLLInit (HINSTANCE hDLL)
 	gParams.Saturn_MultiThread = 0;
 	gParams.Saturn_VAGCChecklistAutoSlow = 1;
 	gParams.Saturn_VAGCChecklistAutoEnabled = 0;
+	gParams.Saturn_VcInfoEnabled = 0;
 
 	gParams.item = new ProjectApolloConfigurator;
 	for (i = 0; i < MAX_TABNUM; i++)

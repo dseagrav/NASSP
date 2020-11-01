@@ -25,8 +25,10 @@
 // To force orbitersdk.h to use <fstream> in any compiler version
 #pragma include_alias( <fstream.h>, <fstream> )
 #include "orbiterSDK.h"
+#include "connector.h"
 
 #include "nasspdefs.h"
+#include "sivb.h"
 #include "s1b.h"
 
 #include <stdio.h>
@@ -40,21 +42,109 @@ PARTICLESTREAMSPEC solid_exhaust = {
 	PARTICLESTREAMSPEC::ATM_FLAT, 1.0, 1.0
 };
 
+PARTICLESTREAMSPEC s1b_exhaust = {
+	0,		// flag
+	3.2,	// size
+	7000,	// rate
+	180.0,	// velocity
+	0.15,	// velocity distribution
+	0.33,	// lifetime
+	4.0,	// growthrate
+	0.0,	// atmslowdown 
+	PARTICLESTREAMSPEC::EMISSIVE,
+	PARTICLESTREAMSPEC::LVL_PSQRT, 0, 1.0,
+	PARTICLESTREAMSPEC::ATM_FLAT, 1.0, 1.0
+};
 
-S1B::S1B (OBJHANDLE hObj, int fmodel) : VESSEL2(hObj, fmodel)
+PARTICLESTREAMSPEC srb_exhaust = {
+	0,		// flag
+	2.75,	// size
+	2000,	// rate
+	60.0,	// velocity
+	0.1,	// velocity distribution
+	0.4,	// lifetime
+	2.0,	// growthrate
+	0.0,	// atmslowdown 
+	PARTICLESTREAMSPEC::EMISSIVE,
+	PARTICLESTREAMSPEC::LVL_PSQRT, 0, 0.5,
+	PARTICLESTREAMSPEC::ATM_FLAT, 1.0, 1.0
+};
 
+SIBConnector::SIBConnector()
 {
-	InitS1b();
+	OurVessel = NULL;
 }
 
-S1B::~S1B()
-
+SIBConnector::~SIBConnector()
 {
-	// Nothing for now.
+
 }
 
-void S1B::InitS1b()
+SIBtoSIVBConnector::SIBtoSIVBConnector()
+{
+	type = SIVB_SI_COMMAND;
+}
 
+SIBtoSIVBConnector::~SIBtoSIVBConnector()
+{
+
+}
+
+bool SIBtoSIVBConnector::ReceiveMessage(Connector *from, ConnectorMessage &m)
+{
+	//
+	// Sanity check.
+	//
+
+	if (m.destination != type)
+	{
+		return false;
+	}
+
+	SIVBSIMessageType messageType;
+
+	messageType = (SIVBSIMessageType)m.messageType;
+
+	switch (messageType)
+	{
+	case SIVB_SI_SWITCH_SELECTOR:
+		if (OurVessel)
+		{
+			OurVessel->SwitchSelector(m.val1.iValue);
+		}
+		return true;
+	case SIVB_SI_THRUSTER_DIR:
+		if (OurVessel)
+		{
+			OurVessel->SetH1ThrusterDir(m.val1.iValue, m.val2.dValue, m.val3.dValue);
+		}
+		return true;
+	case SIVB_SI_SIB_LOW_LEVEL_SENSORS_DRY:
+			if (OurVessel)
+			{
+				m.val1.bValue = OurVessel->GetLowLevelSensorsDry();
+			}
+		return true;
+	case SIVB_SI_PROPELLANT_DEPLETION_ENGINE_CUTOFF:
+		if (OurVessel)
+		{
+			m.val1.bValue = OurVessel->GetSIPropellantDepletionEngineCutoff();
+		}
+		return true;
+	case SIVB_SI_GETSITHRUSTOK:
+		if (OurVessel)
+		{
+			OurVessel->GetSIThrustOK((bool *)m.val1.pValue);
+		}
+		return true;
+	}
+
+	return false;
+}
+
+S1B::S1B (OBJHANDLE hObj, int fmodel) : ProjectApolloConnectorVessel(hObj, fmodel),
+SIB_SIVB_Sep("SIB-SIVB-Sep-Pyros", Panelsdk),
+sibsys(this, th_main, ph_main, SIB_SIVB_Sep, LaunchS, SShutS)
 {
 	int i;
 
@@ -77,87 +167,51 @@ void S1B::InitS1b()
 	RetrosFired = false;
 	LowRes = false;
 
-	MissionTime = MINUS_INFINITY;
-	NextMissionEventTime = MINUS_INFINITY;
-	LastMissionEventTime = MINUS_INFINITY;
-
-	THRUST_FIRST_VAC = 8062309;
-	ISP_FIRST_SL    = 265*G;
-	ISP_FIRST_VAC   = 304*G;
+	THRUST_FIRST_VAC = 1008000;
+	ISP_FIRST_SL = 262 * G;
+	ISP_FIRST_VAC = 294 * G;
 
 	for (i = 0; i < 4; i++)
 		th_retro[i] = 0;
 
 	for (i = 0; i < 8; i++)
 		th_main[i] = 0;
+
+	VehicleNo = 0;
+	RetroNum = 4;
+
+	sibSIVBConnector.SetSIB(this);
+
+	hDockSIVB = CreateDock(_V(0.0, 0, 16.70513 + 5.7023), _V(0, 0, 1), _V(0, 1, 0));
+	RegisterConnector(0, &sibSIVBConnector);
+
+	Panelsdk.RegisterVessel(this);
+	Panelsdk.InitFromFile("ProjectApollo\\SIBSystems");
 }
 
-void S1B::SetS1b()
+S1B::~S1B()
 
 {
-	ClearMeshes();
-	ClearThrusterDefinitions();
-	
-	SetSize (20);
-	SetPMI (_V(78.45, 78.45, 12.00));
-	SetCOG_elev (19.0);
-	SetCrossSections (_V(230.35, 229.75, 58.85));
-	SetCW (0.5, 1.1, 2, 2.4);
-	SetRotDrag (_V(2,2,2));
-	SetPitchMomentScale (0);
-	SetYawMomentScale (0);
-	SetLiftCoeffFunc (0);
-    ClearMeshes();
-    ClearExhaustRefs();
-    ClearAttExhaustRefs();
-
-	SetEmptyMass (EmptyMass);
+	// Nothing for now.
 }
 
 void S1B::clbkPreStep(double simt, double simdt, double mjd)
-
 {
 	if (State == SIB_STATE_HIDDEN)
 	{
 		return;
 	}
 
-	MissionTime += simdt;
+	sibsys.Timestep(simt, simdt);
+	Panelsdk.Timestep(simt);
 
-	//
-	// Currently this just starts the retros. At some point it should
-	// run down the engines if they haven't completely shut down, and
-	// then do any other simulation like ejecting camera pods.
-	//
-
-	switch (State) {
-
-	case S1B_STATE_SHUTTING_DOWN:
-		if (!RetrosFired && thg_retro) {
-			SetThrusterGroupLevel(thg_retro, 1.0);
-			RetrosFired = true;
-		}
-
-		if (CurrentThrust > 0.0) {
-			CurrentThrust -= simdt;
-			for (int i = 0; i < 4; i++) {
-				SetThrusterLevel(th_main[i], CurrentThrust);
-			}
-		}
-		else {
-			SetThrusterGroupLevel(THGROUP_MAIN, 0.0);
-			State = S1B_STATE_WAITING;
-		}
-		break;
-
-	case S1B_STATE_WAITING:
-		//
-		// Nothing for now.
-		//
-		break;
-
-	default:
-		break;
+	if (sibsys.FireRetroRockets())
+	{
+		SetThrusterGroupLevel(thg_retro, 1);
+	}
+	if (SIB_SIVB_Sep.Blown() && hDockSIVB)
+	{
+		SeparateSIVB();
 	}
 }
 
@@ -171,13 +225,14 @@ void S1B::clbkSaveState (FILEHANDLE scn)
 	oapiWriteScenario_int (scn, "STATE", State);
 	oapiWriteScenario_float (scn, "EMASS", EmptyMass);
 	oapiWriteScenario_float (scn, "FMASS", MainFuel);
-	oapiWriteScenario_float (scn, "MISSNTIME", MissionTime);
-	oapiWriteScenario_float (scn, "NMISSNTIME", NextMissionEventTime);
-	oapiWriteScenario_float (scn, "LMISSNTIME", LastMissionEventTime);
 	oapiWriteScenario_float (scn, "T1V", THRUST_FIRST_VAC);
 	oapiWriteScenario_float (scn, "I1S", ISP_FIRST_SL);
 	oapiWriteScenario_float (scn, "I1V", ISP_FIRST_VAC);
 	oapiWriteScenario_float (scn, "CTR", CurrentThrust);
+
+	sibsys.SaveState(scn);
+
+	Panelsdk.Save(scn);
 }
 
 typedef union
@@ -217,19 +272,22 @@ void S1B::AddEngines()
 	VECTOR3 m_exhaust_pos4= {2.5,-2.5, 20.2};
 	VECTOR3 m_exhaust_pos5= {2.5,2.5, 20.2};
 
+	//4x 267 lbm of propellant
 	if (!ph_retro)
-		ph_retro = CreatePropellantResource(200);
+		ph_retro = CreatePropellantResource(484.4);
 
 	if (!ph_main && MainFuel > 0.0)
 		ph_main = CreatePropellantResource(MainFuel);
 
-	double thrust = 100000;
+	//36720 lbf each
+	double thrust = 163338.7;
 
+	//2050 m/s ISP gives 1.52 seconds burn time
 	if (!th_retro[0]) {
-		th_retro[0] = CreateThruster (m_exhaust_pos2, _V(0.1, 0.1, -0.9), thrust, ph_retro, 4000);
-		th_retro[1] = CreateThruster (m_exhaust_pos3, _V(0.1, -0.1, -0.9), thrust, ph_retro, 4000);
-		th_retro[2] = CreateThruster (m_exhaust_pos4, _V(-0.1, 0.1, -0.9), thrust, ph_retro, 4000);
-		th_retro[3] = CreateThruster (m_exhaust_pos5, _V(-0.1, -0.1, -0.9), thrust, ph_retro, 4000);
+		th_retro[0] = CreateThruster (m_exhaust_pos2, _V(0.15, 0.15, -0.9), thrust, ph_retro, 2050.0);
+		th_retro[1] = CreateThruster (m_exhaust_pos3, _V(0.15, -0.15, -0.9), thrust, ph_retro, 2050.0);
+		th_retro[2] = CreateThruster (m_exhaust_pos4, _V(-0.15, 0.15, -0.9), thrust, ph_retro, 2050.0);
+		th_retro[3] = CreateThruster (m_exhaust_pos5, _V(-0.15, -0.15, -0.9), thrust, ph_retro, 2050.0);
 	}
 
 	thg_retro = CreateThrusterGroup(th_retro, 4, THGROUP_RETRO);
@@ -257,14 +315,50 @@ void S1B::AddEngines()
 	th_main[1] = CreateThruster (m_exhaust_pos2, _V( 0,0,1), THRUST_FIRST_VAC , ph_main, ISP_FIRST_VAC, ISP_FIRST_SL);
 	th_main[2] = CreateThruster (m_exhaust_pos3, _V( 0,0,1), THRUST_FIRST_VAC , ph_main, ISP_FIRST_VAC, ISP_FIRST_SL);
 	th_main[3] = CreateThruster (m_exhaust_pos4, _V( 0,0,1), THRUST_FIRST_VAC , ph_main, ISP_FIRST_VAC, ISP_FIRST_SL);
-	th_main[4] = CreateThruster (m_exhaust_pos5, _V( 0,0,1), THRUST_FIRST_VAC , 0, ISP_FIRST_VAC, ISP_FIRST_SL);
-	th_main[5] = CreateThruster (m_exhaust_pos6, _V( 0,0,1), THRUST_FIRST_VAC , 0, ISP_FIRST_VAC, ISP_FIRST_SL);
-	th_main[6] = CreateThruster (m_exhaust_pos7, _V( 0,0,1), THRUST_FIRST_VAC , 0, ISP_FIRST_VAC, ISP_FIRST_SL);
-	th_main[7] = CreateThruster (m_exhaust_pos8, _V( 0,0,1), THRUST_FIRST_VAC , 0, ISP_FIRST_VAC, ISP_FIRST_SL);
+	th_main[4] = CreateThruster (m_exhaust_pos5, _V( 0,0,1), THRUST_FIRST_VAC , ph_main, ISP_FIRST_VAC, ISP_FIRST_SL);
+	th_main[5] = CreateThruster (m_exhaust_pos6, _V( 0,0,1), THRUST_FIRST_VAC , ph_main, ISP_FIRST_VAC, ISP_FIRST_SL);
+	th_main[6] = CreateThruster (m_exhaust_pos7, _V( 0,0,1), THRUST_FIRST_VAC , ph_main, ISP_FIRST_VAC, ISP_FIRST_SL);
+	th_main[7] = CreateThruster (m_exhaust_pos8, _V( 0,0,1), THRUST_FIRST_VAC , ph_main, ISP_FIRST_VAC, ISP_FIRST_SL);
 
 	thg_main = CreateThrusterGroup (th_main, 8, THGROUP_MAIN);
+
+	EXHAUSTSPEC es_1st[8] = {
+		{ th_main[0], NULL, NULL, NULL, 30.0, 0.80, 0, 0.1, tex },
+		{ th_main[1], NULL, NULL, NULL, 30.0, 0.80, 0, 0.1, tex },
+		{ th_main[2], NULL, NULL, NULL, 30.0, 0.80, 0, 0.1, tex },
+		{ th_main[3], NULL, NULL, NULL, 30.0, 0.80, 0, 0.1, tex },
+		{ th_main[4], NULL, NULL, NULL, 30.0, 0.80, 0, 0.1, tex },
+		{ th_main[5], NULL, NULL, NULL, 30.0, 0.80, 0, 0.1, tex },
+		{ th_main[6], NULL, NULL, NULL, 30.0, 0.80, 0, 0.1, tex },
+		{ th_main[7], NULL, NULL, NULL, 30.0, 0.80, 0, 0.1, tex }
+	};
+
 	for (i = 0; i < 8; i++)
-		AddExhaust (th_main[i], 60.0, 0.80, tex);
+		AddExhaust(es_1st + i);
+
+	srb_exhaust.tex = oapiRegisterParticleTexture("ProjectApollo/Contrail_Saturn2");
+	s1b_exhaust.tex = oapiRegisterParticleTexture("ProjectApollo/Contrail_Saturn");
+
+	double exhpos = -4;
+	double exhpos2 = -5;
+
+	AddExhaustStream(th_main[0], m_exhaust_pos1 + _V(0, 0, exhpos2), &s1b_exhaust);
+	AddExhaustStream(th_main[1], m_exhaust_pos2 + _V(0, 0, exhpos2), &s1b_exhaust);
+	AddExhaustStream(th_main[2], m_exhaust_pos3 + _V(0, 0, exhpos2), &s1b_exhaust);
+	AddExhaustStream(th_main[3], m_exhaust_pos4 + _V(0, 0, exhpos2), &s1b_exhaust);
+	AddExhaustStream(th_main[4], m_exhaust_pos5 + _V(0, 0, exhpos2), &s1b_exhaust);
+	AddExhaustStream(th_main[5], m_exhaust_pos6 + _V(0, 0, exhpos2), &s1b_exhaust);
+	AddExhaustStream(th_main[6], m_exhaust_pos7 + _V(0, 0, exhpos2), &s1b_exhaust);
+	AddExhaustStream(th_main[7], m_exhaust_pos8 + _V(0, 0, exhpos2), &s1b_exhaust);
+
+	AddExhaustStream(th_main[0], m_exhaust_pos1 + _V(0, 0, exhpos), &srb_exhaust);
+	AddExhaustStream(th_main[1], m_exhaust_pos2 + _V(0, 0, exhpos), &srb_exhaust);
+	AddExhaustStream(th_main[2], m_exhaust_pos3 + _V(0, 0, exhpos), &srb_exhaust);
+	AddExhaustStream(th_main[3], m_exhaust_pos4 + _V(0, 0, exhpos), &srb_exhaust);
+	AddExhaustStream(th_main[4], m_exhaust_pos5 + _V(0, 0, exhpos), &srb_exhaust);
+	AddExhaustStream(th_main[5], m_exhaust_pos6 + _V(0, 0, exhpos), &srb_exhaust);
+	AddExhaustStream(th_main[6], m_exhaust_pos7 + _V(0, 0, exhpos), &srb_exhaust);
+	AddExhaustStream(th_main[7], m_exhaust_pos8 + _V(0, 0, exhpos), &srb_exhaust);
 }
 
 void S1B::SetMainState(int s)
@@ -276,6 +370,18 @@ void S1B::SetMainState(int s)
 
 	RetrosFired = (state.u.RetrosFired != 0);
 	LowRes = (state.u.LowRes != 0);
+}
+
+void S1B::CreateAirfoils()
+{
+	if (hDockSIVB && DockingStatus(0))
+	{
+		SetCW(0.01, 1.1, 2, 2.4);
+	}
+	else
+	{
+		SetCW(0.5, 1.1, 2, 2.4);
+	}
 }
 
 void S1B::clbkLoadStateEx (FILEHANDLE scn, void *vstatus)
@@ -306,21 +412,6 @@ void S1B::clbkLoadStateEx (FILEHANDLE scn, void *vstatus)
 			sscanf (line+5, "%g", &flt);
 			MainFuel = flt;
 		}
-		else if (!strnicmp(line, "MISSNTIME", 9))
-		{
-            sscanf (line+9, "%f", &flt);
-			MissionTime = flt;
-		}
-		else if (!strnicmp(line, "NMISSNTIME", 10))
-		{
-            sscanf (line + 10, "%f", &flt);
-			NextMissionEventTime = flt;
-		}
-		else if (!strnicmp(line, "LMISSNTIME", 10))
-		{
-            sscanf (line + 10, "%f", &flt);
-			LastMissionEventTime = flt;
-		}
 		else if (!strnicmp(line, "T1V", 3))
 		{
             sscanf (line + 3, "%f", &flt);
@@ -347,23 +438,68 @@ void S1B::clbkLoadStateEx (FILEHANDLE scn, void *vstatus)
 			sscanf (line+5, "%d", &i);
 			State = (S1bState) i;
 		}
+		else if (!strnicmp(line, "SISYSTEMS_BEGIN", sizeof("SISYSTEMS_BEGIN"))) {
+			sibsys.LoadState(scn);
+		}
+		else if (!strnicmp(line, "<INTERNALS>", 11)) { //INTERNALS signals the PanelSDK part of the scenario
+			Panelsdk.Load(scn);			//send the loading to the Panelsdk
+		}
 		else
 		{
 			ParseScenarioLineEx (line, vstatus);
         }
 	}
-
-	LoadMeshes(LowRes); 
-	if (State > SIB_STATE_HIDDEN)
-		ShowS1b();	
-
 }
 
 void S1B::clbkSetClassCaps (FILEHANDLE cfg)
-
 {
 	VESSEL2::clbkSetClassCaps (cfg);
-	SetS1b();
+	ClearMeshes();
+	ClearThrusterDefinitions();
+	ClearExhaustRefs();
+	ClearAttExhaustRefs();
+
+	SetSize(20);
+	SetPMI(_V(78.45, 78.45, 12.00));
+	SetCOG_elev(19.0);
+	SetCrossSections(_V(230.35, 229.75, 58.85));
+	CreateAirfoils();
+	SetRotDrag(_V(2, 2, 2));
+	SetPitchMomentScale(0);
+	SetYawMomentScale(0);
+	SetLiftCoeffFunc(0);
+
+	SetEmptyMass(EmptyMass);
+
+	double td_mass = 450000.0;
+	double td_width = 10.0;
+	double td_tdph = -20.955 - 3.0;
+	double td_height = 40.0;
+
+	static DWORD ntdp = 4;
+	static TOUCHDOWNVTX td[4];
+	double stiffness = (-1)*(td_mass*9.80655) / (3 * -0.05);
+	double damping = 0.9*(2 * sqrt(td_mass*stiffness));
+	for (int i = 0; i < 4; i++) {
+		td[i].damping = damping;
+		td[i].mu = 3;
+		td[i].mu_lng = 3;
+		td[i].stiffness = stiffness;
+	}
+	td[0].pos.x = -cos(30 * RAD)*td_width;
+	td[0].pos.y = -sin(30 * RAD)*td_width;
+	td[0].pos.z = td_tdph;
+	td[1].pos.x = 0;
+	td[1].pos.y = 1 * td_width;
+	td[1].pos.z = td_tdph;
+	td[2].pos.x = cos(30 * RAD)*td_width;
+	td[2].pos.y = -sin(30 * RAD)*td_width;
+	td[2].pos.z = td_tdph;
+	td[3].pos.x = 0;
+	td[3].pos.y = 0;
+	td[3].pos.z = td_tdph + td_height;
+
+	SetTouchdownPoints(td, ntdp);
 }
 
 void S1B::LoadMeshes(bool lowres)
@@ -384,17 +520,49 @@ void S1B::LoadMeshes(bool lowres)
 }
 
 void S1B::clbkDockEvent(int dock, OBJHANDLE connected)
-
 {
+	//S-IB/S-IVB staging
+	if (dock == 0 && connected == NULL)
+	{
+		CreateAirfoils();
+	}
 }
 
+void S1B::clbkPostCreation()
+{
+	LoadMeshes(LowRes);
+	VECTOR3 mesh_dir = _V(0, 0, 0);
+	AddMesh(hsat1stg1, &mesh_dir);
+
+	mesh_dir = _V(0, 0, 16.2);
+	AddMesh(hSat1intstg, &mesh_dir);
+	AddEngines();
+
+	if (SIB_SIVB_Sep.Blown())
+	{
+		if (hDockSIVB) {
+			DelDock(hDockSIVB);
+			hDockSIVB = NULL;
+		}
+	}
+
+	CreateAirfoils();
+}
+
+void S1B::SeparateSIVB()
+{
+	if (hDockSIVB) {
+		Undock(0);
+		DelDock(hDockSIVB);
+		hDockSIVB = NULL;
+	}
+}
 
 void S1B::SetState(S1BSettings &state)
 
 {
 	if (state.SettingsType.S1B_SETTINGS_GENERAL)
 	{
-		MissionTime = state.MissionTime;
 		VehicleNo = state.VehicleNo;
 		RetroNum = state.RetroNum;
 	}
@@ -418,34 +586,46 @@ void S1B::SetState(S1BSettings &state)
 		EngineNum = state.EngineNum;
 	}
 
-	ShowS1b();
 	State = S1B_STATE_SHUTTING_DOWN;
+	
+	//For Saturn class
+	SIB_SIVB_Sep.SetBlown(true);
+	SeparateSIVB();
+	sibsys.SetPropellantLevelSensorsEnable();
+	sibsys.Set_SIB_SIVB_SeparationCmdLatch();
 }
 
-void S1B::ShowS1b()
-
+void S1B::SetH1ThrusterDir(int n, double beta_y, double beta_p)
 {
-	SetEmptyMass(EmptyMass);
+	sibsys.SetThrusterDir(n, beta_y, beta_p);
+}
 
-	VECTOR3 mesh_dir=_V(0,0,0);
-	AddMesh(hsat1stg1, &mesh_dir);
+void S1B::SwitchSelector(int channel)
+{
+	sibsys.SwitchSelector(channel);
+}
 
-	mesh_dir = _V(0, 0, 16.2);
-	AddMesh(hSat1intstg, &mesh_dir);
+bool S1B::GetLowLevelSensorsDry()
+{
+	return sibsys.GetLowLevelSensorsDry();
+}
 
-	AddEngines();
+bool S1B::GetSIPropellantDepletionEngineCutoff()
+{
+	return sibsys.GetOutboardEnginesCutoff();
+}
+
+void S1B::GetSIThrustOK(bool *ok)
+{
+	sibsys.GetThrustOK(ok);
 }
 
 DLLCLBK VESSEL *ovcInit (OBJHANDLE hvessel, int flightmodel)
-
 {
 	return new S1B(hvessel, flightmodel);
 }
 
-
 DLLCLBK void ovcExit (VESSEL *vessel)
-
 {
-	if (vessel) 
-		delete (S1B *)vessel;
+	delete (S1B *)vessel;
 }

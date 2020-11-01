@@ -1114,6 +1114,8 @@ void SaturnV::SeparateStage (int new_stage)
 
 		StageS.play(NOLOOP, 255);
 
+		CreateStageOne();
+
 		//
 		// Seperate off the S1C stage and show it.
 		//

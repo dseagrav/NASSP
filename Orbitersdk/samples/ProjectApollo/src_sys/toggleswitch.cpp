@@ -938,6 +938,9 @@ double CircuitBrakerSwitch::Current()
 		else 
 			Amperes = 0.0; 
 	}
+	else {
+		return 0.0; //remove the else part of this if it causes problems. the function is only ever called by debug strings and I find this implimentation to be more useful --n7275
+	}
 	return Amperes;
 }
 
@@ -1551,6 +1554,18 @@ void GuardedToggleSwitch::DrawSwitch(SURFHANDLE DrawSurface) {
 	}
 }
 
+void GuardedToggleSwitch::DrawSwitchVC(UINT anim, UINT animguard) {
+
+	RedrawVC(anim);
+
+	if (guardState) {
+		OurVessel->SetAnimation(animguard, 1.0);
+	}
+	else {
+		OurVessel->SetAnimation(animguard, 0.0);
+	}
+}
+
 
 void GuardedToggleSwitch::DrawFlash(SURFHANDLE DrawSurface)
 
@@ -1604,6 +1619,28 @@ bool GuardedToggleSwitch::CheckMouseClick(int event, int mx, int my) {
 	else if (event & (PANEL_MOUSE_LBDOWN | PANEL_MOUSE_LBUP)) {
 		if (guardState) {
 			return ToggleSwitch::CheckMouseClick(event, mx, my);
+		}
+	}
+	return false;
+}
+
+bool GuardedToggleSwitch::CheckMouseClickVC(int event, VECTOR3 &p) {
+
+	if (event & PANEL_MOUSE_RBDOWN) {
+
+		if (guardState) {
+			Guard();
+		}
+		else {
+			guardState = 1;
+		}
+		guardClick.play();
+		return true;
+
+	}
+	else if (event & (PANEL_MOUSE_LBDOWN | PANEL_MOUSE_LBUP)) {
+		if (guardState) {
+			return ToggleSwitch::ProcessMouseVC(event, p);
 		}
 	}
 	return false;
@@ -2478,6 +2515,7 @@ ThumbwheelSwitch::ThumbwheelSwitch() {
 	maxState = 0;
 	switchSurface = 0;
 	switchRow = 0;
+	OurVessel = 0;
 }
 
 ThumbwheelSwitch::~ThumbwheelSwitch() {
@@ -2513,6 +2551,8 @@ void ThumbwheelSwitch::Init(int xp, int yp, int w, int h, SURFHANDLE surf, SURFH
 	if (!sclick.isValid()) {
 		row.panelSwitches->soundlib->LoadSound(sclick, THUMBWHEEL_SOUND);
 	}
+
+	OurVessel = switchRow->panelSwitches->vessel;
 }
 
 int ThumbwheelSwitch::GetState() {
@@ -2572,6 +2612,26 @@ bool ThumbwheelSwitch::CheckMouseClick(int event, int mx, int my) {
 	return true;
 }
 
+bool ThumbwheelSwitch::ProcessMouseVC(int event, VECTOR3 &p) {
+
+	int OldState = state;
+
+	if (event == PANEL_MOUSE_LBDOWN) {
+		if (state < maxState) {
+			SwitchTo(state + 1);
+			sclick.play();
+		}
+	}
+	else {
+		if (state > 0) {
+			SwitchTo(state - 1);
+			sclick.play();
+		}
+	}
+
+	return true;
+}
+
 bool ThumbwheelSwitch::SwitchTo(int newState) {
 
 	if (newState >= 0 && newState <= maxState && state != newState) {
@@ -2587,6 +2647,12 @@ bool ThumbwheelSwitch::SwitchTo(int newState) {
 void ThumbwheelSwitch::DrawSwitch(SURFHANDLE DrawSurface) {
 
 	oapiBlt(DrawSurface, switchSurface, x, y, state * width, 0, width, height, SURF_PREDEF_CK);
+}
+
+void ThumbwheelSwitch::RedrawVC(UINT anim) {
+
+	double s = ((double)state) / ((double)maxState);
+	OurVessel->SetAnimation(anim, s);
 }
 
 void ThumbwheelSwitch::DrawFlash(SURFHANDLE DrawSurface)

@@ -66,6 +66,8 @@ namespace mission
 		virtual const std::string& GetLGCVersion() const;
 		//Name of AEA software
 		virtual const std::string& GetAEAVersion() const;
+		//false = LM stage verify bit normal, true = inverted
+		bool IsLMStageBitInverted() const;
 	protected:
 		std::string strFileName;
 		std::string strMissionName;
@@ -84,6 +86,7 @@ namespace mission
 		bool bLMHasLegs;
 		bool bCSMHasHGA;
 		bool bCSMHasVHFRanging;
+		bool bInvertLMStageBit;
 
 		void SetDefaultValues();
 	};

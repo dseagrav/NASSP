@@ -2938,6 +2938,8 @@ public:
 	void CMMLXTDV(double GETIG, VECTOR3 DV_EXDV);
 	//CMC and LGC REFSMMAT Update Generator
 	void CMMRFMAT(int L, int id, int addr);
+	//SLV Navigation Update
+	void CMMSLVNAV(VECTOR3 R_ecl, VECTOR3 V_ecl, double GMT);
 
 	//Trajectory Determination
 	//Vector Comparison Control
@@ -4231,6 +4233,13 @@ public:
 		REFSMMATUpdateMakeupTableBlock Block[2];
 	} CZREFMAT;
 
+	struct SLVNavigationMakeupTable
+	{
+		VECTOR3 PosS = _V(0, 0, 0);
+		VECTOR3 DotS = _V(0, 0, 0);
+		double NUPTIM = 0.0;
+	} CZNAVSLV;
+
 	struct FIDOLaunchAnalogNo1DisplayTable
 	{
 		double LastUpdateTime = -1.0;
@@ -4747,12 +4756,12 @@ public:
 	int MCCCEX;
 	//LGC address for external DV uplink
 	int MCCLEX;
-	//CMC address for REFSMMAT uplink
-	int MCCCRF;
+	//CMC address for REFSMMAT uplink (and downlink)
+	int MCCCRF, MCCCRF_DL;
 	//CMC address for desired REFSMMAT uplink
 	int MCCCXS;
-	//LGC address for REFSMMAT uplink
-	int MCCLRF;
+	//LGC address for REFSMMAT uplink (and downlink)
+	int MCCLRF, MCCLRF_DL;
 	//LGC address for desired REFSMMAT uplink
 	int MCCLXS;
 	//Suppress C-band station contacts generation (0 = suppressed, 1 = unsuppressed)

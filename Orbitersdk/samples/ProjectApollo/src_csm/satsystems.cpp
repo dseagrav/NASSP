@@ -237,6 +237,7 @@ void Saturn::SystemsInit() {
 	FlightBus.WireTo(&FlightBusFeeder);
 	Panelsdk.AddElectrical(&FlightBus, false);
 
+
 	// Feeder for LM umbilical
 	LMUmbilicalFeeder.WireToBuses(&MnbLMPWR1CircuitBraker,&MnbLMPWR2CircuitBraker);
 
@@ -411,6 +412,7 @@ void Saturn::SystemsInit() {
 	pcm.Init(this);
 	vhfranging.Init(this, &VHFStationAudioRCB, &VHFRangingSwitch, &VHFRNGSwitch, &vhftransceiver);
 	vhftransceiver.Init(&VHFAMASwitch, &VHFAMBSwitch, &RCVOnlySwitch, &VHFStationAudioCTRCB);
+	RRTsystem.Init(this, &RNDZXPNDRFLTBusCB, &RNDZXPDRSwitch, &Panel100RNDZXPDRSwitch, &LeftSystemTestRotarySwitch, &RightSystemTestRotarySwitch);
 
 	//Instrumentation
 	sce.Init(this);
@@ -665,6 +667,7 @@ void Saturn::SystemsTimestep(double simt, double simdt, double mjd) {
 		vhftransceiver.Timestep();
 		sce.Timestep();
 		dataRecorder.TimeStep( MissionTime, simdt );
+		RRTsystem.TimeStep(simdt);
 
 		//
 		// Systems state handling
@@ -1384,6 +1387,7 @@ void Saturn::SystemsInternalTimestep(double simdt)
 		usb.SystemTimestep(tFactor);
 		hga.SystemTimestep(tFactor);
 		vhfranging.SystemTimestep(tFactor);
+		RRTsystem.SystemTimestep(tFactor);
 		sce.SystemTimestep();
 		ems.SystemTimestep(tFactor);
 		els.SystemTimestep(tFactor);

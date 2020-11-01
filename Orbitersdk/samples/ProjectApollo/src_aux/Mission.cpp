@@ -102,6 +102,7 @@ namespace mission {
 		strCMCVersion = "Artemis072";
 		strLGCVersion = "Luminary210";
 		strAEAVersion = "FP8";
+		bInvertLMStageBit = false;
 	}
 
 	bool Mission::LoadMission(const int iMission)
@@ -154,6 +155,7 @@ namespace mission {
 		{
 			strAEAVersion = buffer;
 		}
+		oapiReadItem_bool(hFile, "InvertLMStageBit", bInvertLMStageBit);
 
 		oapiCloseFile(hFile, FILE_IN);
 		return true;
@@ -227,5 +229,10 @@ namespace mission {
 	const std::string& Mission::GetAEAVersion() const
 	{
 		return strAEAVersion;
+	}
+
+	bool Mission::IsLMStageBitInverted() const
+	{
+		return bInvertLMStageBit;
 	}
 }

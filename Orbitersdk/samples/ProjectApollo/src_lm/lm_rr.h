@@ -24,10 +24,12 @@ See http://nassp.sourceforge.net/license/ for more details.
 
 #pragma once
 
+
 // Rendezvous Radar
 class LEM_RR : public e_object {
 public:
 	LEM_RR();
+	~LEM_RR();
 	void Init(LEM *s, e_object *dc_src, e_object *ac_src, h_Radiator *ant, Boiler *anheat, Boiler *stbyanheat, h_HeatLoad *rreh, h_HeatLoad *secrreh, h_HeatLoad *rrh);
 	void SaveState(FILEHANDLE scn, char *start_str, char *end_str);
 	void LoadState(FILEHANDLE scn, char *end_str);
@@ -41,19 +43,21 @@ public:
 	double GetRadarShaftPos() { return -asin(sin(shaftAngle)); }
 	double GetRadarRange() { return range; };
 	double GetRadarRate() { return rate; };
-	double GetSignalStrength() { return SignalStrength * 4.0; }
+	double GetSignalStrength() { return SignalStrengthRCVD * 4.0; }
 	double GetShaftErrorSignal();
 	double GetTrunnionErrorSignal();
 	double GetTransmitterPower();
+	double dBm2SignalStrength(double RecvdRRPower_dBm);
+	void SetRCVDrfProp(double freq, double pow, double gain, double phase) { RCVDfreq = freq; RCVDpow = pow; RCVDgain = gain; RCVDPhase = phase; };
 
 	bool IsPowered();
 	bool IsDCPowered();
 	bool IsACPowered();
 	bool IsRadarDataGood() { return radarDataGood; };
 	bool GetNoTrackSignal() { return NoTrackSignal; }
-
+	
 private:
-
+	VESSEL *csm;
 	LEM * lem;					// Pointer at LEM
 	h_Radiator *antenna;		// Antenna (loses heat into space)
 	Boiler *antheater;			// Antenna Heater (puts heat back into antenna)
@@ -80,8 +84,18 @@ private:
 	int scratch[2];             // Scratch data
 	int mode;					//Mode I = false, Mode II = true
 	double hpbw_factor;			//Beamwidth factor
-	double SignalStrength;
+	double SignalStrengthRCVD;
 	double SignalStrengthQuadrant[4];
+	double AntennaFrequency;
+	double RCVDfreq;
+	double RCVDpow;
+	double RCVDgain;
+	double RCVDPhase;
+	double AntennaGain;
+	double AntennaWavelength;
+	double AntennaPower;
+	double AntennaPhase;
+	double AntennaPolarValue;
 	VECTOR3 U_RRL[4];
 	bool AutoTrackEnabled;
 	bool FrequencyLock;
@@ -94,4 +108,6 @@ private:
 	UINT anim_RRPitch, anim_RRYaw;
 	double rr_proc[2];
 	double rr_proc_last[2];
+	//connectors
+	//LM_RRtoCSM_RRT_Connector lm_rr_to_csm_connector;
 };

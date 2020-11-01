@@ -432,6 +432,7 @@ protected:
 
 	bool AutoEngOn;
 	bool AutoEngOff;
+	bool tempsignal;
 
 	LEM *lem;
 };

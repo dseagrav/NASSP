@@ -211,6 +211,7 @@ Saturn::Saturn(OBJHANDLE hObj, int fmodel) : ProjectApolloConnectorVessel (hObj,
 	sivbCommandConnector(this),
 	lemECSConnector(this),
 	payloadCommandConnector(this),
+	CSM_RRTto_LM_RRConnector(this, &RRTsystem),
 	cdi(this),
 	checkControl(soundlib),
 	MFDToPanelConnector(MainPanel, checkControl),
@@ -320,6 +321,7 @@ Saturn::Saturn(OBJHANDLE hObj, int fmodel) : ProjectApolloConnectorVessel (hObj,
 	RegisterConnector(VIRTUAL_CONNECTOR_PORT, &cdi);
 	RegisterConnector(0, &CSMToLEMConnector);
 	RegisterConnector(0, &lemECSConnector);
+	RegisterConnector(VIRTUAL_CONNECTOR_PORT, &CSM_RRTto_LM_RRConnector);
 }
 
 Saturn::~Saturn()
@@ -549,12 +551,16 @@ void Saturn::initSaturn()
 
 	iuCommandConnector.SetSaturn(this);
 	sivbCommandConnector.SetSaturn(this);
+	CSM_RRTto_LM_RRConnector.SetSaturn(this);
+
 
 	CSMToLEMConnector.SetType(CSM_LEM_DOCKING);
 	CSMToLEMPowerConnector.SetType(LEM_CSM_POWER);
 	lemECSConnector.SetType(LEM_CSM_ECS);
 	payloadCommandConnector.SetType(CSM_PAYLOAD_COMMAND);
 	CSMToLEMPowerConnector.SetPowerDrain(&CSMToLEMPowerDrain);
+	CSM_RRTto_LM_RRConnector.SetType(RADAR_RF_SIGNAL);
+
 
 	//
 	// Propellant sources.
@@ -758,7 +764,6 @@ void Saturn::initSaturn()
 		th_ull[i] = 0;
 		th_sep[i] = 0;
 		th_sep2[i] = 0;
-		stagingvent[i] = NULL;
 	}
 
 	for (i = 0; i < 3; i++) {
@@ -1461,6 +1466,7 @@ void Saturn::clbkSaveState(FILEHANDLE scn)
 	vhftransceiver.SaveState(scn);
 	if (pMission->CSMHasVHFRanging()) vhfranging.SaveState(scn);
 	dataRecorder.SaveState(scn);
+	RRTsystem.SaveState(scn);
 
 	Panelsdk.Save(scn);	
 
@@ -2154,6 +2160,9 @@ bool Saturn::ProcessConfigFileLine(FILEHANDLE scn, char *line)
 	    else if (!strnicmp (line, "DATARECORDER", 12)) {
 		    dataRecorder.LoadState(line);
 	    }
+		else if (!strnicmp(line, "RNDZXPDRSystem", 14)) {
+			RRTsystem.LoadState(line);
+		}
 		else if (!strnicmp(line, CMOPTICS_START_STRING, sizeof(CMOPTICS_START_STRING))) {
 			optics.LoadState(scn);
 		} 
