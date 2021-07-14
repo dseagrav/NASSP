@@ -378,6 +378,9 @@ typedef struct
   uint64_t /*unsigned long long */ DownruptTime;	// Time when next DOWNRUPT occurs.
   int NextZ;                    // Next value for the Z register
   int ScalerCounter;            // Counter to keep track of scaler increment timing
+  int Scaler;                   // The Scaler itself, first 3 unnecessary bits are omitted.
+								// The lowest order bit is FS04, so it is increasing  with 12.8kpps
+  unsigned ScalerChanged : 1;
   int ChannelRoutineCount;      // Counter to keep track of channel interface routine timing
   unsigned DskyTimer;           // Timer for DSKY-related timing
   unsigned DskyFlash;           // DSKY flash counter (0 = flash occurring)

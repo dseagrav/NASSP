@@ -436,6 +436,8 @@ void ApolloGuidance::SaveState(FILEHANDLE scn)
 	oapiWriteScenario_int (scn, "IDXV", vagc.IndexValue);
 	oapiWriteScenario_int (scn, "NEXTZ", vagc.NextZ);
 	oapiWriteScenario_int (scn, "SCALERCOUNTER", vagc.ScalerCounter);
+	oapiWriteScenario_int(scn, "SCALER", vagc.Scaler);
+	oapiWriteScenario_int(scn, "SCALERCHANGED", vagc.ScalerChanged ? 1 : 0);
 	oapiWriteScenario_int (scn, "CRCOUNT", vagc.ChannelRoutineCount);
 	oapiWriteScenario_int(scn, "DSKYCHANNEL163", vagc.DskyChannel163);
 	oapiWriteScenario_int(scn, "WARNINGFILTER", vagc.WarningFilter);
@@ -470,6 +472,10 @@ void ApolloGuidance::LoadState(FILEHANDLE scn)
 	//
 	// Now load the data.
 	//
+
+	boolean  //Flag to keep compatibility with older scenario files.
+		scalerLoaded = false 
+		;
 
 	while (oapiReadScenario_nextline (scn, line)) {
 		if (!strnicmp(line, AGC_END_STRING, sizeof(AGC_END_STRING)))
@@ -513,6 +519,15 @@ void ApolloGuidance::LoadState(FILEHANDLE scn)
 		}
 		else if (!strnicmp (line, "SCALERCOUNTER", 13)) {
 			sscanf (line+13, "%d", &vagc.ScalerCounter);
+		}
+		else if (!strnicmp(line, "SCALER", 6)) {
+			sscanf(line + 6, "%d", &vagc.Scaler);
+			scalerLoaded = true;
+		}
+		else if (!strnicmp(line, "SCALERCHANGED", 6)) {
+			int tmp;
+			sscanf(line + 6, "%d", &tmp);
+			vagc.ScalerChanged = tmp;
 		}
 		else if (!strnicmp (line, "CRCOUNT", 7)) {
 			sscanf (line+7, "%d", &vagc.ChannelRoutineCount);
@@ -576,6 +591,9 @@ void ApolloGuidance::LoadState(FILEHANDLE scn)
 		papiReadScenario_bool(line, "TRACKERALARM", TrackerAlarm);
 		papiReadScenario_bool(line, "GIMBALLOCKALARM", GimbalLockAlarm);
 	}
+
+	if (!scalerLoaded)
+		vagc.Scaler = (vagc.InputChannel[ChanSCALER1] << 2) | (vagc.InputChannel[ChanSCALER2] << 16);
 }
 
 //

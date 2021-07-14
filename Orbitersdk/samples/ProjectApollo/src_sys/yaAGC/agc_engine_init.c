@@ -242,6 +242,8 @@ agc_engine_init (agc_t * State, const char *RomImage, const char *CoreDump,
 
   State->NextZ = 0;
   State->ScalerCounter = 0;
+  State->Scaler = 0;
+  State->ScalerChanged = 0;
   State->ChannelRoutineCount = 0;
 
   State->DskyTimer = 0;
